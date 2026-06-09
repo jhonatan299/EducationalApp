@@ -1,6 +1,6 @@
 # EducationalApp
 
-Prototype backend for an educational study app with Pomodoro, study history, goals, progress stats, coins, and missions.
+Prototype educational study app with a Spring Boot backend and an Android Kotlin frontend.
 
 ## Backend
 
@@ -45,3 +45,25 @@ JDBC URL: jdbc:h2:mem:educationalapp
 User: sa
 Password:
 ```
+
+## Android Frontend
+
+Path:
+
+```text
+EducationalApplication/
+```
+
+Open this folder in Android Studio:
+
+```text
+EducationalApplication/
+```
+
+The Android emulator calls the backend at:
+
+```text
+http://10.0.2.2:8080
+```
+
+Before using login in the app, start the backend locally.

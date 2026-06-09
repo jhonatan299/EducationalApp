@@ -1,6 +1,8 @@
 package com.educationalapp.backend.study;
 
 import com.educationalapp.backend.common.SessionSource;
+import com.educationalapp.backend.common.StudyType;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +16,14 @@ public final class StudySessionDtos {
             @NotNull Long userId,
             @NotBlank String subject,
             @Min(1) int durationMinutes,
-            String notes
+            StudyType studyType,
+            String content,
+            String objective,
+            String notes,
+            String learned,
+            String difficulties,
+            String nextAction,
+            @Min(1) @Max(5) Integer focusRating
     ) {
     }
 
@@ -26,7 +35,14 @@ public final class StudySessionDtos {
             SessionSource source,
             LocalDateTime startedAt,
             LocalDateTime endedAt,
-            String notes
+            StudyType studyType,
+            String content,
+            String objective,
+            String notes,
+            String learned,
+            String difficulties,
+            String nextAction,
+            Integer focusRating
     ) {
         public static StudySessionResponse from(StudySession session) {
             return new StudySessionResponse(
@@ -37,7 +53,14 @@ public final class StudySessionDtos {
                     session.getSource(),
                     session.getStartedAt(),
                     session.getEndedAt(),
-                    session.getNotes()
+                    session.getStudyType(),
+                    session.getContent(),
+                    session.getObjective(),
+                    session.getNotes(),
+                    session.getLearned(),
+                    session.getDifficulties(),
+                    session.getNextAction(),
+                    session.getFocusRating()
             );
         }
     }

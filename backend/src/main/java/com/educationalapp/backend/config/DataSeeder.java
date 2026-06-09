@@ -2,6 +2,7 @@ package com.educationalapp.backend.config;
 
 import com.educationalapp.backend.auth.AuthDtos.RegisterRequest;
 import com.educationalapp.backend.auth.AuthService;
+import com.educationalapp.backend.common.StudyType;
 import com.educationalapp.backend.goal.GoalDtos.CreateGoalRequest;
 import com.educationalapp.backend.goal.GoalService;
 import com.educationalapp.backend.study.StudySessionDtos.ManualStudySessionRequest;
@@ -43,13 +44,27 @@ public class DataSeeder {
                     user.userId(),
                     "Matematica",
                     50,
-                    "Revisao de funcoes e exercicios."
+                    StudyType.EXERCISES,
+                    "Funcoes",
+                    "Resolver exercicios de funcao do primeiro grau",
+                    "Revisao de funcoes e exercicios.",
+                    "Melhorei a leitura dos graficos.",
+                    "Ainda erro quando a questao mistura tabela e grafico.",
+                    "Fazer mais 10 exercicios amanha.",
+                    4
             ));
             studySessionService.createManualSession(new ManualStudySessionRequest(
                     user.userId(),
                     "Historia",
                     30,
-                    "Resumo sobre Brasil Republica."
+                    StudyType.THEORY,
+                    "Brasil Republica",
+                    "Ler resumo e organizar linha do tempo",
+                    "Resumo sobre Brasil Republica.",
+                    "Entendi melhor a politica do cafe com leite.",
+                    "Preciso revisar datas importantes.",
+                    "Montar mapa mental.",
+                    3
             ));
         };
     }

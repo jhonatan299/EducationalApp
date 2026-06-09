@@ -1,0 +1,8 @@
+*.log
+*.docx
+.idea/
+**/.idea/
+**/build/
+**/.gradle/
+**/.kotlin/
+**/local.properties
