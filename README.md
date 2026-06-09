@@ -1,6 +1,6 @@
 # EducationalApp
 
-Prototype educational study app with a Spring Boot backend and an Android Kotlin frontend.
+Study app prototype for tracking focus sessions, goals, reviews, and progress.
 
 ## Backend
 
