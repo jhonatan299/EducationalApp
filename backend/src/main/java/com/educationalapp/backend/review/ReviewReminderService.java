@@ -19,7 +19,7 @@ public class ReviewReminderService {
     @Transactional
     public ReviewReminder complete(Long reminderId) {
         ReviewReminder reminder = reviewReminderRepository.findById(reminderId)
-                .orElseThrow(() -> new IllegalArgumentException("Review reminder not found: " + reminderId));
+                .orElseThrow(() -> new IllegalArgumentException("Lembrete de revisão não encontrado: " + reminderId));
         reminder.complete();
         return reminder;
     }

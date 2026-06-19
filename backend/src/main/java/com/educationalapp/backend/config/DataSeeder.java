@@ -23,45 +23,45 @@ public class DataSeeder {
                 return;
             }
 
-            var user = authService.register(new RegisterRequest("Demo Student", "demo@educational.app", "123456"));
+            var user = authService.register(new RegisterRequest("Estudante Demo", "demo@educational.app", "123456"));
 
             goalService.create(new CreateGoalRequest(
                     user.userId(),
-                    "Estudar Matematica 10h ate a prova",
-                    "Matematica",
+                    "Estudar Matemática 10h até a prova",
+                    "Matemática",
                     600,
                     LocalDate.now().plusDays(14)
             ));
             goalService.create(new CreateGoalRequest(
                     user.userId(),
-                    "Revisar Historia antes do simulado",
-                    "Historia",
+                    "Revisar História antes do simulado",
+                    "História",
                     240,
                     LocalDate.now().plusDays(7)
             ));
 
             studySessionService.createManualSession(new ManualStudySessionRequest(
                     user.userId(),
-                    "Matematica",
+                    "Matemática",
                     50,
                     StudyType.EXERCISES,
-                    "Funcoes",
-                    "Resolver exercicios de funcao do primeiro grau",
-                    "Revisao de funcoes e exercicios.",
-                    "Melhorei a leitura dos graficos.",
-                    "Ainda erro quando a questao mistura tabela e grafico.",
-                    "Fazer mais 10 exercicios amanha.",
+                    "Funções",
+                    "Resolver exercícios de função do primeiro grau",
+                    "Revisão de funções e exercícios.",
+                    "Melhorei a leitura dos gráficos.",
+                    "Ainda erro quando a questão mistura tabela e gráfico.",
+                    "Fazer mais 10 exercícios amanhã.",
                     4
             ));
             studySessionService.createManualSession(new ManualStudySessionRequest(
                     user.userId(),
-                    "Historia",
+                    "História",
                     30,
                     StudyType.THEORY,
-                    "Brasil Republica",
+                    "Brasil República",
                     "Ler resumo e organizar linha do tempo",
-                    "Resumo sobre Brasil Republica.",
-                    "Entendi melhor a politica do cafe com leite.",
+                    "Resumo sobre Brasil República.",
+                    "Entendi melhor a política do café com leite.",
                     "Preciso revisar datas importantes.",
                     "Montar mapa mental.",
                     3

@@ -22,17 +22,17 @@ public class MissionService {
     @Transactional
     public Mission claim(Long missionId) {
         Mission mission = missionRepository.findById(missionId)
-                .orElseThrow(() -> new IllegalArgumentException("Mission not found: " + missionId));
+                .orElseThrow(() -> new IllegalArgumentException("Missão não encontrada: " + missionId));
 
         if (!mission.isCompleted()) {
-            throw new IllegalArgumentException("Mission is not completed yet");
+            throw new IllegalArgumentException("A missão ainda não foi concluída");
         }
         if (mission.isClaimed()) {
-            throw new IllegalArgumentException("Mission already claimed");
+            throw new IllegalArgumentException("Missão já resgatada");
         }
 
         mission.claim();
-        userService.addCoins(mission.getUserId(), mission.getRewardCoins(), "Mission reward: " + mission.getTitle());
+        userService.addCoins(mission.getUserId(), mission.getRewardCoins(), "Recompensa da missão: " + mission.getTitle());
         return mission;
     }
 }

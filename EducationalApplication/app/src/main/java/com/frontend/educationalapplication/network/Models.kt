@@ -1,5 +1,8 @@
 package com.frontend.educationalapplication.network
 
+// These data classes are similar to Java DTOs/records.
+// They represent the JSON shapes returned by the Spring Boot backend.
+
 data class AuthResponse(
     val userId: Long,
     val name: String,

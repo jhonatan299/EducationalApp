@@ -27,7 +27,7 @@ public class AuthService {
     @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.email())) {
-            throw new IllegalArgumentException("Email already registered");
+            throw new IllegalArgumentException("E-mail já cadastrado");
         }
 
         AppUser user = userRepository.save(new AppUser(
@@ -41,19 +41,19 @@ public class AuthService {
 
     public AuthResponse login(LoginRequest request) {
         AppUser user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+                .orElseThrow(() -> new IllegalArgumentException("E-mail ou senha inválidos"));
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new IllegalArgumentException("E-mail ou senha inválidos");
         }
 
         return toResponse(user);
     }
 
     private void createDefaultMissions(Long userId) {
-        missionRepository.save(new Mission(userId, "Primeiro foco", "Complete 25 minutos de estudo", 25, 10));
-        missionRepository.save(new Mission(userId, "Sessao forte", "Complete 60 minutos de estudo", 60, 25));
-        missionRepository.save(new Mission(userId, "Maratona leve", "Complete 120 minutos de estudo", 120, 60));
+        missionRepository.save(new Mission(userId, "Primeiro foco", "Conclua 25 minutos de estudo", 25, 10));
+        missionRepository.save(new Mission(userId, "Sessão forte", "Conclua 60 minutos de estudo", 60, 25));
+        missionRepository.save(new Mission(userId, "Maratona leve", "Conclua 120 minutos de estudo", 120, 60));
     }
 
     private AuthResponse toResponse(AppUser user) {

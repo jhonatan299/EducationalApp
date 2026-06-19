@@ -46,7 +46,7 @@ public class StudySessionService {
     public StudySession createPomodoroSession(Long userId, String subject, int minutes,
                                               LocalDateTime startedAt, LocalDateTime endedAt, String notes) {
         return createSession(userId, subject, minutes, SessionSource.POMODORO, startedAt, endedAt,
-                StudyType.REVIEW, null, "Complete a focused Pomodoro", notes, null, null, null, null);
+                StudyType.REVIEW, null, "Concluir um Pomodoro com foco", notes, null, null, null, null);
     }
 
     public List<StudySession> listForUser(Long userId) {
@@ -64,7 +64,7 @@ public class StudySessionService {
         );
         applyProgress(userId, subject, minutes);
         createReviewReminder(session);
-        userService.addCoins(userId, Math.max(1, minutes / 5), "Study session: " + subject);
+        userService.addCoins(userId, Math.max(1, minutes / 5), "Sessão de estudo: " + subject);
         return session;
     }
 

@@ -1,5 +1,6 @@
 package com.frontend.educationalapplication.network
 
+import com.frontend.educationalapplication.BuildConfig
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
 import java.net.URL
@@ -9,11 +10,23 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class EducationalApi(
-    private val baseUrl: String = "http://10.0.2.2:8080"
+    // 10.0.2.2 is the Android emulator's special address for your computer's localhost.
+    // Backend on PC: http://localhost:8080
+    // Backend from emulator: http://10.0.2.2:8080
+    private val baseUrl: String = BuildConfig.API_BASE_URL
 ) {
+    // Public functions below are what the UI calls. Each one maps to a Spring endpoint.
     suspend fun login(email: String, password: String): AuthResponse = post(
         path = "/api/auth/login",
         body = JSONObject()
+            .put("email", email)
+            .put("password", password)
+    ).toAuthResponse()
+
+    suspend fun register(name: String, email: String, password: String): AuthResponse = post(
+        path = "/api/auth/register",
+        body = JSONObject()
+            .put("name", name)
             .put("email", email)
             .put("password", password)
     ).toAuthResponse()
@@ -93,6 +106,7 @@ class EducationalApi(
     private suspend fun getObject(path: String): JSONObject = request("GET", path)
 
     private suspend fun getArray(path: String): List<JSONObject> = withContext(Dispatchers.IO) {
+        // Network work must run on Dispatchers.IO so it does not block the Android UI thread.
         val connection = openConnection("GET", path)
         val response = readResponse(connection)
         JSONArray(response).let { array ->
@@ -105,6 +119,7 @@ class EducationalApi(
 
     private suspend fun request(method: String, path: String, body: JSONObject? = null): JSONObject =
         withContext(Dispatchers.IO) {
+            // Generic request for endpoints that return one JSON object.
             val connection = openConnection(method, path)
             if (body != null) {
                 OutputStreamWriter(connection.outputStream).use { writer ->
@@ -115,6 +130,7 @@ class EducationalApi(
         }
 
     private fun openConnection(method: String, path: String): HttpURLConnection {
+        // HttpURLConnection is built into Java/Android. Later we can replace this with Retrofit.
         return (URL(baseUrl + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method
             connectTimeout = 5000
@@ -128,6 +144,7 @@ class EducationalApi(
     }
 
     private fun readResponse(connection: HttpURLConnection): String {
+        // For errors, Spring returns JSON like {"error":"message"}, so we try to show that.
         val stream = if (connection.responseCode in 200..299) {
             connection.inputStream
         } else {
@@ -142,6 +159,8 @@ class EducationalApi(
     }
 }
 
+// These extension functions convert raw JSON from the backend into Kotlin data classes.
+// Example: JSONObject.toAuthResponse() returns AuthResponse(...).
 private fun JSONObject.toAuthResponse() = AuthResponse(
     userId = getLong("userId"),
     name = getString("name"),
