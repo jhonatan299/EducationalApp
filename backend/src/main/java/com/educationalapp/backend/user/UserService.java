@@ -27,4 +27,11 @@ public class UserService {
         coinTransactionRepository.save(new CoinTransaction(userId, amount, reason));
         return user;
     }
+
+    @Transactional
+    public AppUser updateName(Long userId, String name) {
+        AppUser user = getUser(userId);
+        user.updateName(name.trim());
+        return userRepository.save(user);
+    }
 }

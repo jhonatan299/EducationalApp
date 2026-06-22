@@ -58,4 +58,8 @@ public class AppUser {
     public void addCoins(int amount) {
         this.coins += amount;
     }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
 }

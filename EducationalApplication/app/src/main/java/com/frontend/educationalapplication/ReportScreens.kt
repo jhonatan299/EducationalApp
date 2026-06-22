@@ -68,6 +68,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
+import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -155,7 +156,7 @@ fun ReportSectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(112.dp)
+            .height(126.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) accent else accent.copy(alpha = 0.82f))
             .clickable(onClick = onClick)
@@ -195,24 +196,30 @@ fun ReportSectionCard(
                 text = title,
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = CircularDisplayFamily
             )
             Text(
                 text = subtitle,
-                color = Color.White.copy(alpha = 0.88f),
-                style = MaterialTheme.typography.bodyMedium
+                color = Color.White.copy(alpha = 0.94f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                fontFamily = CircularDisplayFamily
             )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(99.dp))
                     .background(Color.White)
-                    .padding(horizontal = 18.dp, vertical = 6.dp)
+                    .width(98.dp)
+                    .height(36.dp),
+                contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = action,
                     color = accent,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = CircularDisplayFamily
                 )
             }
         }

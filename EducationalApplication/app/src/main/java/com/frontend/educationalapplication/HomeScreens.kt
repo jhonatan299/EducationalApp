@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -47,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -68,6 +70,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
+import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -85,6 +88,7 @@ fun HomeScreen(
     val tabs = listOf("Home", "Relatório", "Calendário", "Estatísticas", "Metas")
     var selectedTab by remember { mutableIntStateOf(0) }
     var homeRoute by remember { mutableStateOf(HomeRoute.Main) }
+    var selectedLearningPath by remember { mutableStateOf("Matematica aplicada") }
 
     // These lists hold the data loaded from the Spring backend.
     // They start empty, then refresh() fills them.
@@ -179,8 +183,15 @@ fun HomeScreen(
                         user = user,
                         progress = progress,
                         sessions = sessions,
+                        goals = goals,
                         onOpenPomodoro = { homeRoute = HomeRoute.Pomodoro },
-                        onOpenNotifications = { homeRoute = HomeRoute.Notifications }
+                        reviews = reviews,
+                        onOpenProfile = { homeRoute = HomeRoute.Profile },
+                        onOpenHelp = { homeRoute = HomeRoute.Help },
+                        onOpenLearningPath = { path ->
+                            selectedLearningPath = path
+                            homeRoute = HomeRoute.LearningPath
+                        }
                     )
                     HomeRoute.Pomodoro -> PomodoroDetailScreen(
                         api = api,
@@ -188,15 +199,24 @@ fun HomeScreen(
                         onBack = { homeRoute = HomeRoute.Main },
                         onDone = { refresh() }
                     )
-                    HomeRoute.Notifications -> NotificationsScreen(
+                    HomeRoute.Profile -> ProfileScreen(
+                        api = api,
+                        user = user,
                         reviews = reviews,
+                        onUserUpdated = onUserUpdated,
                         onBack = { homeRoute = HomeRoute.Main }
+                    )
+                    HomeRoute.Help -> HelpScreen(onBack = { homeRoute = HomeRoute.Main })
+                    HomeRoute.LearningPath -> LearningPathScreen(
+                        title = selectedLearningPath,
+                        onBack = { homeRoute = HomeRoute.Main },
+                        onStartFocus = { homeRoute = HomeRoute.Pomodoro }
                     )
                 }
                 1 -> ReportReviewsScreen(api, user.userId, sessions, reviews, onDone = { refresh() })
                 2 -> CalendarScreen(calendar)
-                3 -> StatsScreen(progress)
-                4 -> GoalsMissionsScreen(api, goals, missions, onClaimed = {
+                3 -> ProgressDashboard(progress, goals)
+                4 -> GoalsMissionsDashboard(api, goals, missions, onClaimed = {
                     onUserUpdated(user.copy(coins = user.coins + it))
                     refresh()
                 })
@@ -208,7 +228,9 @@ fun HomeScreen(
 enum class HomeRoute {
     Main,
     Pomodoro,
-    Notifications
+    Profile,
+    Help,
+    LearningPath
 }
 
 @Composable
@@ -216,29 +238,70 @@ fun HomeMainScreen(
     user: AuthResponse,
     progress: ProgressResponse?,
     sessions: List<StudySessionResponse>,
+    goals: List<GoalResponse>,
+    reviews: List<ReviewReminderResponse>,
     onOpenPomodoro: () -> Unit,
-    onOpenNotifications: () -> Unit
+    onOpenProfile: () -> Unit,
+    onOpenHelp: () -> Unit,
+    onOpenLearningPath: (String) -> Unit
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    val normalizedQuery = searchQuery.trim().lowercase()
+    val showPomodoro = normalizedQuery.isBlank() || "pomodoro foco timer".contains(normalizedQuery)
+    val showLearningPath = normalizedQuery.isBlank() ||
+        "matematica aplicada engenharia calculo progresso estudo".contains(normalizedQuery)
+
     HeaderSection(
         userName = user.name,
         coins = user.coins,
-        onNotificationClick = onOpenNotifications
+        hasNotifications = reviews.any { !it.completed },
+        onProfileClick = onOpenProfile,
+        onHelpClick = onOpenHelp,
+        searchQuery = searchQuery,
+        onSearchQueryChange = { searchQuery = it }
     )
-    ProgressOverview(progress = progress)
 
-    HomeFeatureCard(
+    if (false && showPomodoro) {
+        HomeFeatureCard(
         title = "Pomodoro",
         subtitle = "Inicie uma sessão focada com contador",
         meta = "${sessions.size} registros salvos",
         accent = LearnerPrimary,
         onClick = onOpenPomodoro
-    )
+        )
+    }
+    if (showLearningPath) {
+        ProgressOverview(progress = progress, sessions = sessions, goals = goals, onOpenLearningPath = onOpenLearningPath)
+    }
+    if (showPomodoro) {
+        HomeFeatureCard(
+            title = "Pomodoro",
+            subtitle = "Inicie uma sessao focada com contador",
+            meta = "${sessions.size} registros salvos",
+            accent = LearnerPrimary,
+            onClick = onOpenPomodoro
+        )
+    }
+    if (showLearningPath) {
+        LearningPathOptions(onOpenLearningPath = onOpenLearningPath)
+    }
+    if (!showPomodoro && !showLearningPath) {
+        EmptyStateCard(
+            title = "Nenhum resultado",
+            subtitle = "Tente buscar por Pomodoro, matematica, engenharia ou progresso."
+        )
+    }
 }
 
 @Composable
-fun ProgressOverview(progress: ProgressResponse?) {
-    val totalMinutes = progress?.totalMinutes ?: 0
-    val progressPercent = (totalMinutes / 120f).coerceIn(0f, 1f)
+fun ProgressOverview(
+    progress: ProgressResponse?,
+    sessions: List<StudySessionResponse>,
+    goals: List<GoalResponse>,
+    onOpenLearningPath: (String) -> Unit
+) {
+    val primaryGoal = goals.firstOrNull()
+    val progressPercent = ((primaryGoal?.progressPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -246,7 +309,7 @@ fun ProgressOverview(progress: ProgressResponse?) {
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "Seu estudo de hoje",
+                text = "Seu progresso de estudo",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground
             )
@@ -260,7 +323,7 @@ fun ProgressOverview(progress: ProgressResponse?) {
             ) {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progressPercent.coerceAtLeast(0.08f))
+                        .fillMaxWidth(progressPercent)
                         .height(4.dp)
                         .clip(RoundedCornerShape(99.dp))
                         .background(LearnerTeal)
@@ -268,7 +331,9 @@ fun ProgressOverview(progress: ProgressResponse?) {
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "${(progressPercent * 100).toInt()}% do seu progresso",
+                text = primaryGoal?.let {
+                    "${it.currentMinutes}/${it.targetMinutes} min na meta atual - ${(progressPercent * 100).toInt()}%"
+                } ?: "Defina uma meta para acompanhar seu progresso",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -278,26 +343,69 @@ fun ProgressOverview(progress: ProgressResponse?) {
             modifier = Modifier
                 .size(68.dp)
                 .clip(CircleShape)
-                .background(LearnerPrimaryTint),
+            .background(LearnerPrimaryTint),
             contentAlignment = Alignment.Center
         ) {
+            Text(
+                text = "${(progressPercent * 100).toInt()}%",
+                color = LearnerTeal,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            if (false) {
             Text("🙂", fontSize = 28.sp)
+            }
         }
     }
 
+    if (false) {
+    Spacer(Modifier.height(18.dp))
+    Text(
+        text = "Sua trilha de estudo",
+        style = MaterialTheme.typography.titleLarge,
+        color = MaterialTheme.colorScheme.onBackground
+    )
+    Text(
+        text = "Escolha uma atividade para continuar",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
     StudyProgressCard(
         title = "Gramática básica",
         action = "Continuar",
-        progress = "01/30",
+        progress = "00/30",
         accent = Color(0xFF6A63FF),
-        variant = 0
+        variant = 0,
+        onClick = { onOpenLearningPath("Gramatica basica") }
     )
     StudyProgressCard(
         title = "Conversa guiada",
         action = "Começar",
-        progress = "01/30",
-        accent = LearnerPrimary,
-        variant = 1
+        progress = "00/30",
+        accent = Color(0xFF3F74F6),
+        variant = 1,
+        onClick = { onOpenLearningPath("Conversa guiada") }
+    )
+    }
+}
+
+@Composable
+fun LearningPathOptions(onOpenLearningPath: (String) -> Unit) {
+    StudyProgressCard(
+        title = "Matematica aplicada",
+        action = "Revisar",
+        progress = "00/20",
+        accent = Color(0xFF6A63FF),
+        variant = 0,
+        onClick = { onOpenLearningPath("Matematica aplicada") }
+    )
+    StudyProgressCard(
+        title = "Fundamentos de engenharia",
+        action = "Explorar",
+        progress = "00/16",
+        accent = Color(0xFF3F74F6),
+        variant = 1,
+        onClick = { onOpenLearningPath("Fundamentos de engenharia") }
     )
 }
 
@@ -361,12 +469,15 @@ fun HomeFeatureCard(
                     text = title,
                     color = Color.White,
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = CircularDisplayFamily
                 )
                 Text(
                     text = subtitle,
-                    color = Color.White.copy(alpha = 0.88f),
-                    style = MaterialTheme.typography.bodyMedium
+                    color = Color.White.copy(alpha = 0.94f),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = CircularDisplayFamily
                 )
                 Box(
                     modifier = Modifier
@@ -392,7 +503,8 @@ fun StudyProgressCard(
     action: String,
     progress: String,
     accent: Color,
-    variant: Int
+    variant: Int,
+    onClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -400,6 +512,7 @@ fun StudyProgressCard(
             .height(136.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(accent)
+            .clickable(onClick = onClick)
             .padding(20.dp)
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
@@ -451,7 +564,8 @@ fun StudyProgressCard(
                 text = title,
                 color = Color.White,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = CircularDisplayFamily
             )
             Box(
                 modifier = Modifier
@@ -463,7 +577,8 @@ fun StudyProgressCard(
                     text = action,
                     color = accent,
                     style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = CircularDisplayFamily
                 )
             }
         }
@@ -479,7 +594,8 @@ fun StudyProgressCard(
                 text = progress,
                 color = Color.White,
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.ExtraBold,
+                fontFamily = CircularDisplayFamily
             )
         }
     }
@@ -490,7 +606,11 @@ fun StudyProgressCard(
 fun HeaderSection(
     userName: String,
     coins: Int,
-    onNotificationClick: () -> Unit
+    hasNotifications: Boolean,
+    onProfileClick: () -> Unit,
+    onHelpClick: () -> Unit,
+    searchQuery: String,
+    onSearchQueryChange: (String) -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -522,6 +642,13 @@ fun HeaderSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
+                        text = "Ola, ${userName.firstName()}",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = Color.White,
+                        fontFamily = CircularDisplayFamily
+                    )
+                    if (false) {
+                    Text(
                         text = "Olá,",
                         style = MaterialTheme.typography.headlineLarge,
                         color = Color.White
@@ -537,70 +664,80 @@ fun HeaderSection(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.78f)
                     )
+                    }
                 }
-                Box(
-                    modifier = Modifier
-                        .size(52.dp)
-                        .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.18f))
-                        .clickable(onClick = onNotificationClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    NavGlyph(index = 2, color = Color.White)
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Box(
                         modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(top = 13.dp, end = 14.dp)
-                            .size(8.dp)
+                            .size(52.dp)
                             .clip(CircleShape)
-                            .background(LearnerCoral)
-                    )
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable(onClick = onHelpClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        HelpGlyph(color = Color.White)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .size(52.dp)
+                            .clip(CircleShape)
+                            .background(Color.White.copy(alpha = 0.18f))
+                            .clickable(onClick = onProfileClick),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        ProfileGlyph(color = Color.White)
+                        if (hasNotifications) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .padding(top = 13.dp, end = 14.dp)
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(LearnerCoral)
+                            )
+                        }
+                    }
                 }
             }
-            SearchBar()
+            SearchBar(value = searchQuery, onValueChange = onSearchQueryChange)
         }
     }
 }
 
 @Composable
-fun SearchBar(modifier: Modifier = Modifier) {
+fun SearchBar(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(29.dp))
+            .height(46.dp)
+            .clip(RoundedCornerShape(23.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 18.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SearchGlyph(color = LearnerMutedText.copy(alpha = 0.55f))
+        SearchGlyph(color = LearnerMutedText.copy(alpha = 0.78f))
         Spacer(Modifier.width(14.dp))
-        Text(
-            text = "Buscar",
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
-            color = LearnerMutedText.copy(alpha = 0.68f),
-            fontSize = 18.sp
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyLarge.copy(
+                color = LearnerMutedText,
+                fontSize = 18.sp
+            ),
+            cursorBrush = SolidColor(LearnerPrimary),
+            decorationBox = { innerTextField ->
+                if (value.isBlank()) {
+                    Text("Buscar", color = LearnerMutedText.copy(alpha = 0.84f), fontSize = 18.sp)
+                }
+                innerTextField()
+            }
         )
-        Text(
-            text = "Tudo",
-            color = LearnerMutedText.copy(alpha = 0.78f),
-            fontSize = 16.sp
-        )
-        Spacer(Modifier.width(8.dp))
-        Canvas(modifier = Modifier.size(18.dp)) {
-            drawLine(
-                color = LearnerMutedText.copy(alpha = 0.65f),
-                start = Offset(size.width * 0.2f, size.height * 0.35f),
-                end = Offset(size.width * 0.5f, size.height * 0.65f),
-                strokeWidth = 3f
-            )
-            drawLine(
-                color = LearnerMutedText.copy(alpha = 0.65f),
-                start = Offset(size.width * 0.8f, size.height * 0.35f),
-                end = Offset(size.width * 0.5f, size.height * 0.65f),
-                strokeWidth = 3f
-            )
-        }
     }
 }
 
@@ -749,6 +886,91 @@ fun NavGlyph(index: Int, color: Color) {
                 drawLine(color, Offset(size.width * 0.36f, size.height * 0.18f), Offset(size.width * 0.64f, size.height * 0.18f), strokeWidth = 3.2f)
             }
         }
+    }
+}
+
+@Composable
+fun HelpScreen(onBack: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ReportSubscreenHeader(title = "Ajuda", onBack = onBack)
+        HelpTopicCard(
+            title = "Como usar o Pomodoro",
+            subtitle = "Escolha uma materia e um tempo de foco. Estude sem interrupcoes ate o contador terminar, faca a pausa e repita. Sessoes curtas ajudam a reduzir cansaco e facilitam comecar.",
+            accent = LearnerPrimary
+        )
+        HelpTopicCard(
+            title = "Beneficios do foco em blocos",
+            subtitle = "Dividir o estudo em ciclos torna a tarefa mais leve, cria pausas reais e ajuda voce a acompanhar quanto tempo dedicou a cada materia.",
+            accent = LearnerTeal
+        )
+        HelpTopicCard(
+            title = "Como funciona o engajamento",
+            subtitle = "Sessoes concluidas alimentam seu historico, metas e missoes. Quando uma missao estiver completa, voce pode resgatar moedas e acompanhar sua evolucao ao longo da semana.",
+            accent = LearnerCoral
+        )
+    }
+}
+
+@Composable
+fun LearningPathScreen(title: String, onBack: () -> Unit, onStartFocus: () -> Unit) {
+    val isEngineering = title == "Fundamentos de engenharia"
+    val firstActivity = if (isEngineering) "Estatica e fisica" else "Calculo e algebra"
+    val secondActivity = if (isEngineering) "Analisar estruturas simples" else "Resolver problemas aplicados"
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        ReportSubscreenHeader(title = title, onBack = onBack)
+        SectionCard("Proxima atividade") {
+            Text(
+                "Escolha uma atividade curta e use o Pomodoro para registrar seu foco.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(8.dp))
+            ListLine(firstActivity, "15 min de estudo guiado")
+            ListLine(secondActivity, "Aplicar o que foi estudado")
+            Button(onClick = onStartFocus, modifier = Modifier.fillMaxWidth()) {
+                Text("Iniciar sessao de foco")
+            }
+        }
+    }
+}
+
+@Composable
+fun HelpTopicCard(title: String, subtitle: String, accent: Color) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.12f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(title, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+            Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
+fun HelpGlyph(color: Color) {
+    Canvas(modifier = Modifier.size(24.dp)) {
+        drawCircle(
+            color = color,
+            radius = size.minDimension * 0.38f,
+            center = Offset(size.width / 2f, size.height / 2f),
+            style = Stroke(width = 3f)
+        )
+        drawArc(
+            color = color,
+            startAngle = 220f,
+            sweepAngle = 200f,
+            useCenter = false,
+            topLeft = Offset(size.width * 0.32f, size.height * 0.2f),
+            size = Size(size.width * 0.36f, size.height * 0.42f),
+            style = Stroke(width = 3f)
+        )
+        drawCircle(color = color, radius = 2.2f, center = Offset(size.width * 0.5f, size.height * 0.74f))
     }
 }
 

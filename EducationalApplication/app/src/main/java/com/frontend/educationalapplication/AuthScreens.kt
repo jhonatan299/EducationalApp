@@ -68,6 +68,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
+import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -142,7 +143,7 @@ fun OnboardingScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Criar conta", fontWeight = FontWeight.Bold)
+                    Text("Criar conta", fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
                 }
                 Button(
                     onClick = onLoginClick,
@@ -151,12 +152,12 @@ fun OnboardingScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(14.dp)
                 ) {
-                    Text("Entrar", fontWeight = FontWeight.Bold)
+                    Text("Entrar", fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
                 }
             }
             Spacer(Modifier.height(10.dp))
             TextButton(onClick = onSkip) {
-                Text("Saltar e usar sem login", color = LearnerPrimary, fontWeight = FontWeight.Bold)
+                Text("Saltar e usar sem login", color = LearnerPrimary, fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
             }
         }
     }
@@ -221,7 +222,7 @@ fun PrimaryAuthButton(text: String, onClick: () -> Unit) {
             .height(56.dp),
         shape = RoundedCornerShape(16.dp)
     ) {
-        Text(text, fontWeight = FontWeight.Bold)
+        Text(text, fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
     }
 }
 
@@ -328,7 +329,7 @@ fun LoginScreen(
             onClick = { onLogin(email, password) },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Entrar")
+            Text("Entrar", fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
         }
         error?.let {
             Spacer(Modifier.height(12.dp))

@@ -82,10 +82,32 @@ fun CalendarScreen(calendar: List<CalendarDayResponse>) {
     val calendarByDate = calendar.associateBy { it.date }
     var selectedMode by remember { mutableIntStateOf(0) }
     var selectedDate by remember(calendar) { mutableStateOf(calendar.firstOrNull()?.date ?: todayIsoDate()) }
+    var dateInput by remember { mutableStateOf(selectedDate) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         CalendarTopBar(
             subtitle = "$studiedDays dias com estudo • $totalMinutes min"
+        )
+
+        OutlinedTextField(
+            value = dateInput,
+            onValueChange = { dateInput = it },
+            label = { Text("Ir para a data (AAAA-MM-DD)") },
+            singleLine = true,
+            leadingIcon = { SearchGlyph(color = LearnerPrimary) },
+            trailingIcon = {
+                TextButton(
+                    onClick = {
+                        if (dateInput.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                            selectedDate = formatIsoDate(parseIsoDate(dateInput))
+                            dateInput = selectedDate
+                        }
+                    }
+                ) {
+                    Text("Ir", color = LearnerPrimary, fontWeight = FontWeight.Bold)
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
         )
 
         CalendarModeSelector(
@@ -98,7 +120,14 @@ fun CalendarScreen(calendar: List<CalendarDayResponse>) {
                 MonthCalendarView(
                     selectedDate = selectedDate,
                     calendarByDate = calendarByDate,
-                    onDateSelected = { selectedDate = it }
+                    onDateSelected = {
+                        selectedDate = it
+                        dateInput = it
+                    },
+                    onMonthChange = {
+                        selectedDate = moveMonth(selectedDate, it)
+                        dateInput = selectedDate
+                    }
                 )
                 SelectedDayStudyCard(calendarByDate[selectedDate])
             }
@@ -134,32 +163,34 @@ fun CalendarTopBar(subtitle: String) {
             )
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CalendarActionButton(background = MaterialTheme.colorScheme.surface) {
-                SearchGlyph(color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            CalendarActionButton(background = LearnerPrimary) {
-                Text(
-                    text = "+",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
     }
 }
 
 @Composable
-fun CalendarActionButton(background: Color, content: @Composable () -> Unit) {
+fun CalendarActionButton(
+    background: Color = MaterialTheme.colorScheme.surface,
+    onClick: () -> Unit = {},
+    content: @Composable () -> Unit
+) {
     Box(
         modifier = Modifier
             .size(42.dp)
             .clip(RoundedCornerShape(14.dp))
-            .background(background),
+            .background(background)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         content()
+    }
+}
+
+@Composable
+fun MonthArrowGlyph(direction: Int, color: Color) {
+    Canvas(modifier = Modifier.size(20.dp)) {
+        val startX = if (direction < 0) size.width * 0.62f else size.width * 0.38f
+        val endX = if (direction < 0) size.width * 0.38f else size.width * 0.62f
+        drawLine(color, Offset(startX, size.height * 0.2f), Offset(endX, size.height * 0.5f), strokeWidth = 3f)
+        drawLine(color, Offset(endX, size.height * 0.5f), Offset(startX, size.height * 0.8f), strokeWidth = 3f)
     }
 }
 
@@ -201,12 +232,36 @@ fun CalendarModeSelector(selectedMode: Int, onModeSelected: (Int) -> Unit) {
 fun MonthCalendarView(
     selectedDate: String,
     calendarByDate: Map<String, CalendarDayResponse>,
-    onDateSelected: (String) -> Unit
+    onDateSelected: (String) -> Unit,
+    onMonthChange: (Int) -> Unit
 ) {
     val days = remember(selectedDate) { buildMonthDays(selectedDate) }
     val weeks = days.chunked(7)
 
-    SectionCard(monthTitlePt(selectedDate)) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(0.dp)
+        ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            CalendarActionButton(onClick = { onMonthChange(-1) }) {
+                MonthArrowGlyph(direction = -1, color = LearnerPrimary)
+            }
+            Text(monthTitlePt(selectedDate), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold)
+            CalendarActionButton(onClick = { onMonthChange(1) }) {
+                MonthArrowGlyph(direction = 1, color = LearnerPrimary)
+            }
+        }
+        Spacer(Modifier.height(8.dp))
         Row(modifier = Modifier.fillMaxWidth()) {
             listOf("Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom").forEach { label ->
                 Text(
@@ -240,6 +295,8 @@ fun MonthCalendarView(
         }
     }
 }
+}
+
 
 @Composable
 fun MonthDayCell(
@@ -516,6 +573,10 @@ fun buildWeekDates(selectedDate: String): List<String> {
         selected.add(Calendar.DAY_OF_MONTH, 1)
         formatIsoDate(item)
     }
+}
+
+fun moveMonth(date: String, delta: Int): String {
+    return formatIsoDate(parseIsoDate(date).apply { add(Calendar.MONTH, delta) })
 }
 
 fun parseIsoDate(value: String): Calendar {

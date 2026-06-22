@@ -31,6 +31,11 @@ class EducationalApi(
             .put("password", password)
     ).toAuthResponse()
 
+    suspend fun updateUserName(userId: Long, name: String): AuthResponse = post(
+        path = "/api/users/$userId/name",
+        body = JSONObject().put("name", name)
+    ).toAuthResponse()
+
     suspend fun startPomodoro(
         userId: Long,
         subject: String,
