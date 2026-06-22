@@ -71,7 +71,6 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
-import com.frontend.educationalapplication.ui.theme.learnerCardAccent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -418,13 +417,12 @@ fun HomeFeatureCard(
     accent: Color,
     onClick: () -> Unit
 ) {
-    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = cardAccent),
+        colors = CardDefaults.cardColors(containerColor = accent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
@@ -489,7 +487,7 @@ fun HomeFeatureCard(
                 ) {
                     Text(
                         text = meta,
-                        color = cardAccent,
+                        color = accent,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -508,13 +506,12 @@ fun StudyProgressCard(
     variant: Int,
     onClick: () -> Unit
 ) {
-    val cardAccent = learnerCardAccent(accent)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(145.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(cardAccent)
+            .background(accent)
             .clickable(onClick = onClick)
             .padding(20.dp)
     ) {
@@ -547,7 +544,7 @@ fun StudyProgressCard(
             } else {
                 drawCircle(Color.White.copy(alpha = 0.24f), radius = 30f, center = Offset(size.width * 0.72f, size.height * 0.58f))
                 drawCircle(Color.White.copy(alpha = 0.86f), radius = 11f, center = Offset(size.width * 0.72f, size.height * 0.52f))
-                drawCircle(cardAccent.copy(alpha = 0.85f), radius = 3.5f, center = Offset(size.width * 0.72f, size.height * 0.52f))
+                drawCircle(accent.copy(alpha = 0.85f), radius = 3.5f, center = Offset(size.width * 0.72f, size.height * 0.52f))
                 drawLine(
                     color = Color(0xFF243BCE).copy(alpha = 0.7f),
                     start = Offset(size.width * 0.78f, size.height * 0.54f),
@@ -578,7 +575,7 @@ fun StudyProgressCard(
             ) {
                 Text(
                     text = action,
-                    color = cardAccent,
+                    color = accent,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CircularDisplayFamily

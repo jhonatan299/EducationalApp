@@ -68,7 +68,6 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
-import com.frontend.educationalapplication.ui.theme.learnerCardAccent
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -154,13 +153,12 @@ fun ReportSectionCard(
     accent: Color,
     onClick: () -> Unit
 ) {
-    val cardAccent = learnerCardAccent(accent)
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(136.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(if (selected) cardAccent else cardAccent.copy(alpha = 0.82f))
+            .background(if (selected) accent else accent.copy(alpha = 0.82f))
             .clickable(onClick = onClick)
             .padding(18.dp)
     ) {
@@ -218,7 +216,7 @@ fun ReportSectionCard(
             ) {
                 Text(
                     text = action,
-                    color = cardAccent,
+                    color = accent,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CircularDisplayFamily

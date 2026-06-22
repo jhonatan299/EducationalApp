@@ -70,7 +70,6 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
-import com.frontend.educationalapplication.ui.theme.learnerCardAccent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -432,11 +431,10 @@ fun DashboardAccentCard(
     progress: Float? = null,
     emphasized: Boolean = false
 ) {
-    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = if (emphasized) cardAccent else cardAccent.copy(alpha = 0.12f)),
+        colors = CardDefaults.cardColors(containerColor = if (emphasized) accent else accent.copy(alpha = 0.12f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -463,8 +461,8 @@ fun DashboardAccentCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(99.dp)),
-                    color = if (emphasized) Color.White else cardAccent,
-                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else cardAccent.copy(alpha = 0.18f)
+                    color = if (emphasized) Color.White else accent,
+                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else accent.copy(alpha = 0.18f)
                 )
             }
         }
@@ -511,11 +509,10 @@ fun ProgressBreakdownCard(
 
 @Composable
 fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () -> Unit) {
-    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = cardAccent),
+        colors = CardDefaults.cardColors(containerColor = accent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
@@ -536,9 +533,9 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
                 modifier = Modifier.fillMaxWidth(),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = cardAccent,
+                    contentColor = accent,
                     disabledContainerColor = Color.White.copy(alpha = 0.40f),
-                    disabledContentColor = cardAccent.copy(alpha = 0.65f)
+                    disabledContentColor = accent.copy(alpha = 0.65f)
                 )
             ) {
                 Text(if (mission.claimed) "Resgatada" else "Resgatar")
