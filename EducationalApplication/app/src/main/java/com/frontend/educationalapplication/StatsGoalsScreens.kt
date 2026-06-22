@@ -70,6 +70,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
+import com.frontend.educationalapplication.ui.theme.learnerCardAccent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -431,20 +432,21 @@ fun DashboardAccentCard(
     progress: Float? = null,
     emphasized: Boolean = false
 ) {
+    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = if (emphasized) accent else accent.copy(alpha = 0.12f)),
+        colors = CardDefaults.cardColors(containerColor = if (emphasized) cardAccent else cardAccent.copy(alpha = 0.12f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
                 title,
                 color = if (emphasized) Color.White else MaterialTheme.colorScheme.onSurface,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = if (emphasized) CircularDisplayFamily else null
             )
@@ -461,8 +463,8 @@ fun DashboardAccentCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(99.dp)),
-                    color = if (emphasized) Color.White else accent,
-                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else accent.copy(alpha = 0.18f)
+                    color = if (emphasized) Color.White else cardAccent,
+                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else cardAccent.copy(alpha = 0.18f)
                 )
             }
         }
@@ -509,17 +511,18 @@ fun ProgressBreakdownCard(
 
 @Composable
 fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () -> Unit) {
+    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = accent),
+        colors = CardDefaults.cardColors(containerColor = cardAccent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(mission.title, color = Color.White, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.ExtraBold, fontFamily = CircularDisplayFamily)
+            Text(mission.title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, fontFamily = CircularDisplayFamily)
             Text(
                 "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} moedas",
                 color = Color.White.copy(alpha = 0.94f),
@@ -533,9 +536,9 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
                 modifier = Modifier.fillMaxWidth(),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                     containerColor = Color.White,
-                    contentColor = accent,
+                    contentColor = cardAccent,
                     disabledContainerColor = Color.White.copy(alpha = 0.40f),
-                    disabledContentColor = accent.copy(alpha = 0.65f)
+                    disabledContentColor = cardAccent.copy(alpha = 0.65f)
                 )
             ) {
                 Text(if (mission.claimed) "Resgatada" else "Resgatar")

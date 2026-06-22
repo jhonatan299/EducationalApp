@@ -24,7 +24,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             // setContent is the Compose version of "put the UI on the screen".
             // Everything inside this block describes what Android should draw.
-            EducationalApplicationTheme {
+            EducationalApplicationTheme(darkTheme = false) {
                 StudyApp()
             }
         }
@@ -100,7 +100,12 @@ fun StudyApp() {
                 )
             }
         } else {
-            HomeScreen(api = api, user = user!!, isGuest = isGuest, onUserUpdated = { user = it })
+            HomeScreen(
+                api = api,
+                user = user!!,
+                isGuest = isGuest,
+                onUserUpdated = { user = it }
+            )
         }
     }
 }

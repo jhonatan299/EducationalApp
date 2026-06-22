@@ -8,13 +8,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 
 private val DarkColorScheme = darkColorScheme(
-    primary = LearnerPrimary,
-    secondary = LearnerTeal,
-    tertiary = LearnerYellow,
+    primary = Color(0xFF9AA9FF),
+    secondary = Color(0xFF58CAE1),
+    tertiary = Color(0xFFFFCB68),
     background = LearnerDarkBackground,
     surface = LearnerDarkCard,
-    surfaceVariant = LearnerDarkCard,
-    onPrimary = Color.White,
+    surfaceVariant = Color(0xFF202737),
+    primaryContainer = Color(0xFF252D3E),
+    onPrimaryContainer = LearnerDarkText,
+    outline = Color(0xFF364154),
+    onPrimary = LearnerDarkBackground,
     onBackground = LearnerDarkText,
     onSurface = LearnerDarkText,
     onSurfaceVariant = LearnerDarkMutedText
@@ -27,6 +30,8 @@ private val LightColorScheme = lightColorScheme(
     background = LearnerBackground,
     surface = LearnerCard,
     surfaceVariant = LearnerCard,
+    primaryContainer = LearnerPrimaryTint,
+    onPrimaryContainer = LearnerText,
     outline = LearnerBorder,
     onPrimary = Color.White,
     onBackground = LearnerText,

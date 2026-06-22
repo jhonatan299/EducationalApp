@@ -71,6 +71,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import com.frontend.educationalapplication.ui.theme.LearnerTeal
 import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
+import com.frontend.educationalapplication.ui.theme.learnerCardAccent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -172,7 +173,7 @@ fun HomeScreen(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(99.dp)),
                     color = LearnerPrimary,
-                    trackColor = LearnerPrimaryTint
+                    trackColor = MaterialTheme.colorScheme.primaryContainer
                 )
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -319,7 +320,7 @@ fun ProgressOverview(
                     .fillMaxWidth()
                     .height(4.dp)
                     .clip(RoundedCornerShape(99.dp))
-                    .background(LearnerPrimaryTint)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Box(
                     modifier = Modifier
@@ -343,7 +344,7 @@ fun ProgressOverview(
             modifier = Modifier
                 .size(68.dp)
                 .clip(CircleShape)
-            .background(LearnerPrimaryTint),
+            .background(MaterialTheme.colorScheme.primaryContainer),
             contentAlignment = Alignment.Center
         ) {
             Text(
@@ -382,7 +383,7 @@ fun ProgressOverview(
         title = "Conversa guiada",
         action = "Começar",
         progress = "00/30",
-        accent = Color(0xFF3F74F6),
+        accent = Color(0xFFE88CB9),
         variant = 1,
         onClick = { onOpenLearningPath("Conversa guiada") }
     )
@@ -403,7 +404,7 @@ fun LearningPathOptions(onOpenLearningPath: (String) -> Unit) {
         title = "Fundamentos de engenharia",
         action = "Explorar",
         progress = "00/16",
-        accent = Color(0xFF3F74F6),
+        accent = Color(0xFFE88CB9),
         variant = 1,
         onClick = { onOpenLearningPath("Fundamentos de engenharia") }
     )
@@ -417,19 +418,20 @@ fun HomeFeatureCard(
     accent: Color,
     onClick: () -> Unit
 ) {
+    val cardAccent = learnerCardAccent(accent)
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = accent),
+        colors = CardDefaults.cardColors(containerColor = cardAccent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(132.dp)
-                .padding(18.dp)
+                .height(142.dp)
+                .padding(20.dp)
         ) {
             Canvas(modifier = Modifier.matchParentSize()) {
                 drawCircle(
@@ -462,8 +464,8 @@ fun HomeFeatureCard(
                 )
             }
             Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier.align(Alignment.TopStart),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
                     text = title,
@@ -487,7 +489,7 @@ fun HomeFeatureCard(
                 ) {
                     Text(
                         text = meta,
-                        color = accent,
+                        color = cardAccent,
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -506,12 +508,13 @@ fun StudyProgressCard(
     variant: Int,
     onClick: () -> Unit
 ) {
+    val cardAccent = learnerCardAccent(accent)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(136.dp)
+            .height(145.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(accent)
+            .background(cardAccent)
             .clickable(onClick = onClick)
             .padding(20.dp)
     ) {
@@ -544,7 +547,7 @@ fun StudyProgressCard(
             } else {
                 drawCircle(Color.White.copy(alpha = 0.24f), radius = 30f, center = Offset(size.width * 0.72f, size.height * 0.58f))
                 drawCircle(Color.White.copy(alpha = 0.86f), radius = 11f, center = Offset(size.width * 0.72f, size.height * 0.52f))
-                drawCircle(accent.copy(alpha = 0.85f), radius = 3.5f, center = Offset(size.width * 0.72f, size.height * 0.52f))
+                drawCircle(cardAccent.copy(alpha = 0.85f), radius = 3.5f, center = Offset(size.width * 0.72f, size.height * 0.52f))
                 drawLine(
                     color = Color(0xFF243BCE).copy(alpha = 0.7f),
                     start = Offset(size.width * 0.78f, size.height * 0.54f),
@@ -557,13 +560,13 @@ fun StudyProgressCard(
         }
 
         Column(
-            modifier = Modifier.align(Alignment.CenterStart),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.align(Alignment.TopStart),
+            verticalArrangement = Arrangement.spacedBy(15.dp)
         ) {
             Text(
                 text = title,
                 color = Color.White,
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.ExtraBold,
                 fontFamily = CircularDisplayFamily
             )
@@ -575,7 +578,7 @@ fun StudyProgressCard(
             ) {
                 Text(
                     text = action,
-                    color = accent,
+                    color = cardAccent,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CircularDisplayFamily
@@ -768,7 +771,7 @@ fun BottomNavBar(
                     modifier = Modifier
                         .size(if (selected) 52.dp else 44.dp)
                         .clip(CircleShape)
-                        .background(if (selected) LearnerPrimaryTint else Color.Transparent)
+                        .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
                         .clickable { onSelected(index) }
                         .padding(12.dp),
                     contentAlignment = Alignment.Center

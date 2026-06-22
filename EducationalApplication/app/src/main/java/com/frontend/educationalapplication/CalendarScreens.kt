@@ -308,7 +308,7 @@ fun MonthDayCell(
 ) {
     val background = when {
         selected -> LearnerPrimary
-        studyDay != null -> LearnerPrimaryTint.copy(alpha = 0.75f)
+        studyDay != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
         else -> Color.Transparent
     }
     val textColor = when {
