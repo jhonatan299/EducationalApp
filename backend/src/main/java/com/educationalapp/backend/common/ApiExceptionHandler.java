@@ -24,4 +24,10 @@ public class ApiExceptionHandler {
                 .orElse("Invalid request");
         return Map.of("error", message);
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
+    public Map<String, String> handleServiceUnavailable(IllegalStateException exception) {
+        return Map.of("error", exception.getMessage());
+    }
 }

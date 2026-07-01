@@ -23,7 +23,9 @@ public final class StudySessionDtos {
             String learned,
             String difficulties,
             String nextAction,
-            @Min(1) @Max(5) Integer focusRating
+            @Min(1) @Max(5) Integer focusRating,
+            @Min(0) Integer exerciseCount,
+            @Min(0) Integer correctAnswers
     ) {
     }
 
@@ -42,7 +44,9 @@ public final class StudySessionDtos {
             String learned,
             String difficulties,
             String nextAction,
-            Integer focusRating
+            Integer focusRating,
+            Integer exerciseCount,
+            Integer correctAnswers
     ) {
         public static StudySessionResponse from(StudySession session) {
             return new StudySessionResponse(
@@ -60,7 +64,9 @@ public final class StudySessionDtos {
                     session.getLearned(),
                     session.getDifficulties(),
                     session.getNextAction(),
-                    session.getFocusRating()
+                    session.getFocusRating(),
+                    session.getExerciseCount(),
+                    session.getCorrectAnswers()
             );
         }
     }

@@ -1,10 +1,14 @@
 package com.educationalapp.backend.review;
 
+import com.educationalapp.backend.review.ReviewReminderDtos.CreateReviewReminderRequest;
 import com.educationalapp.backend.review.ReviewReminderDtos.ReviewReminderResponse;
+import jakarta.validation.Valid;
 import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,8 +28,18 @@ public class ReviewReminderController {
                 .toList();
     }
 
+    @PostMapping
+    public ReviewReminderResponse create(@Valid @RequestBody CreateReviewReminderRequest request) {
+        return ReviewReminderResponse.from(reviewReminderService.create(request));
+    }
+
     @PostMapping("/{reminderId}/complete")
     public ReviewReminderResponse complete(@PathVariable Long reminderId) {
         return ReviewReminderResponse.from(reviewReminderService.complete(reminderId));
+    }
+
+    @DeleteMapping("/{reminderId}")
+    public void delete(@PathVariable Long reminderId) {
+        reviewReminderService.delete(reminderId);
     }
 }

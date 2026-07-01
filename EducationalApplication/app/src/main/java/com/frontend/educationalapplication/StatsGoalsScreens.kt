@@ -1,4 +1,4 @@
-package com.frontend.educationalapplication
+﻿package com.frontend.educationalapplication
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -61,6 +61,8 @@ import com.frontend.educationalapplication.network.EducationalApi
 import com.frontend.educationalapplication.network.GoalResponse
 import com.frontend.educationalapplication.network.MissionResponse
 import com.frontend.educationalapplication.network.ProgressResponse
+import com.frontend.educationalapplication.network.RankingResponse
+import com.frontend.educationalapplication.network.RankingPlayerResponse
 import com.frontend.educationalapplication.network.ReviewReminderResponse
 import com.frontend.educationalapplication.network.StudySessionResponse
 import com.frontend.educationalapplication.ui.theme.LearnerCoral
@@ -94,12 +96,12 @@ fun StatsScreen(progress: ProgressResponse?) {
     // Progress contains already-aggregated totals from the backend.
     SectionCard("Progresso") {
         if (progress == null) {
-            Text("Ainda não há dados")
+            Text("Ainda nao ha dados")
             return@SectionCard
         }
         Text("${progress.totalMinutes} minutos estudados nesta semana", fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(8.dp))
-        Text("Por matéria")
+        Text("Por materia")
         progress.bySubject.forEach { item ->
             BarLine(label = item.subject, value = item.minutes, max = progress.totalMinutes.coerceAtLeast(1))
         }
@@ -136,7 +138,7 @@ fun MissionsScreen(
     onClaimed: (Int) -> Unit
 ) {
     // Missions can be claimed when the backend says they are completed.
-    SectionCard("Missões") {
+    SectionCard("Missoes") {
         val scope = rememberCoroutineScope()
         missions.forEach { mission ->
             ListLine(
@@ -162,13 +164,18 @@ fun MissionsScreen(
 }
 
 @Composable
-fun ProgressDashboard(progress: ProgressResponse?, goals: List<GoalResponse>) {
+fun ProgressDashboard(
+    progress: ProgressResponse?,
+    goals: List<GoalResponse>,
+    onOpenRanking: () -> Unit
+) {
     val totalMinutes = progress?.totalMinutes ?: 0
     val activeDays = progress?.byDay?.count { it.minutes > 0 } ?: 0
     val subjects = progress?.bySubject?.count { it.minutes > 0 } ?: 0
     val completedGoals = goals.count { it.completed }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        RankingMenuCard(onOpenRanking = onOpenRanking)
         SectionHeader(
             title = "Estatisticas",
             subtitle = "Veja como o seu estudo evolui ao longo da semana"
@@ -217,6 +224,199 @@ fun ProgressDashboard(progress: ProgressResponse?, goals: List<GoalResponse>) {
                 isPreview = true
             )
         }
+    }
+}
+
+@Composable
+private fun RankingMenuCard(onOpenRanking: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenRanking),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF292059)),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            RobotAvatar(seed = 0, avatarSize = 54.dp)
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                Text("Ranking da comunidade", color = Color.White, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                Text("Compare seu ritmo de estudos com outros alunos", color = Color.White.copy(alpha = .72f), fontSize = 13.sp)
+            }
+            Text(">", color = LearnerYellow, fontSize = 32.sp)
+        }
+    }
+}
+
+@Composable
+fun RankingDashboard(api: EducationalApi, userId: Long, onBack: () -> Unit) {
+    var rankingPeriod by remember { mutableStateOf(RankingPeriod.Week) }
+    var ranking by remember { mutableStateOf<RankingResponse?>(null) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    fun loadRanking() {
+        loading = true
+        error = null
+        scope.apiCall(
+            action = {
+                if (rankingPeriod == RankingPeriod.Week) {
+                    api.rankingWeekly(userId)
+                } else {
+                    api.rankingAllTime(userId)
+                }
+            },
+            onSuccess = {
+                ranking = it
+                loading = false
+            },
+            onError = {
+                error = it
+                loading = false
+            }
+        )
+    }
+
+    LaunchedEffect(rankingPeriod, userId) {
+        loadRanking()
+    }
+
+    val players = ranking?.players.orEmpty()
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Text("Ranking", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
+        Text(if (rankingPeriod == RankingPeriod.Week) "Tempo estudado nesta semana" else "Tempo acumulado desde o inicio", color = LearnerMutedText)
+        RankingPeriodToggle(selected = rankingPeriod, onSelected = { rankingPeriod = it })
+        if (loading) {
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(99.dp)),
+                color = LearnerPrimary,
+                trackColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        }
+        error?.let {
+            ErrorStateCard(error = it.toFriendlyError(), onRetry = { loadRanking() })
+        }
+        Card(
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF2B5)),
+            shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                RankingHeaderBadge()
+                Column {
+                    Text(if (rankingPeriod == RankingPeriod.Week) "Desafio semanal" else "Ranking historico", fontWeight = FontWeight.Black)
+                    Text("Dados de demonstracao - serao substituidos pelos dados reais.", color = LearnerMutedText, fontSize = 13.sp)
+                }
+            }
+        }
+        if (!loading && error == null && players.isEmpty()) {
+            EmptyStateCard(
+                title = "Ranking vazio por enquanto",
+                subtitle = "Quando alguem registrar sessoes de estudo, o ranking aparece aqui."
+            )
+        }
+        players.forEach { player -> RankingRow(player = player) }
+        BottomBackButton(onBack = onBack)
+    }
+}
+
+private enum class RankingPeriod { Week, AllTime }
+
+@Composable
+private fun RankingPeriodToggle(selected: RankingPeriod, onSelected: (RankingPeriod) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().background(Color(0xFFEDEBFA), RoundedCornerShape(14.dp)).padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        RankingPeriod.values().forEach { period ->
+            val isSelected = selected == period
+            Text(
+                text = if (period == RankingPeriod.Week) "Semana" else "Todo o tempo",
+                modifier = Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(if (isSelected) LearnerPrimary else Color.Transparent).clickable { onSelected(period) }.padding(vertical = 10.dp),
+                color = if (isSelected) Color.White else LearnerMutedText,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                fontSize = 13.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun RankingHeaderBadge() {
+    Box(
+        modifier = Modifier
+            .size(46.dp)
+            .clip(CircleShape)
+            .background(LearnerYellow),
+        contentAlignment = Alignment.Center
+    ) {
+        Text("TOP", color = Color(0xFF5C4300), fontWeight = FontWeight.Black, fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun RankingPositionBadge(position: Int) {
+    val badgeColor = when (position) {
+        1 -> Color(0xFFFFD54F)
+        2 -> Color(0xFFC9CED6)
+        3 -> Color(0xFFD89A5B)
+        else -> Color(0xFFEDEBFA)
+    }
+    val textColor = if (position <= 3) Color(0xFF2E2A1F) else LearnerMutedText
+    Box(
+        modifier = Modifier
+            .width(34.dp)
+            .height(34.dp)
+            .clip(CircleShape)
+            .background(badgeColor),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = if (position <= 3) "$position" else "#$position",
+            color = textColor,
+            fontWeight = FontWeight.Black,
+            textAlign = TextAlign.Center,
+            fontSize = if (position <= 3) 15.sp else 13.sp
+        )
+    }
+}
+
+@Composable
+private fun RankingRow(player: RankingPlayerResponse) {
+    val isCurrentUser = player.currentUser
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = if (isCurrentUser) LearnerPrimaryTint else MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            RankingPositionBadge(position = player.position)
+            RobotAvatar(seed = (player.userId % 5).toInt(), avatarSize = 42.dp)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(player.name, fontWeight = FontWeight.Black)
+                Text(if (isCurrentUser) "Seu ritmo atual" else "Estudando esta semana", color = LearnerMutedText, fontSize = 12.sp)
+            }
+            Text("${player.minutes} min", color = LearnerPrimary, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun RobotAvatar(seed: Int, avatarSize: androidx.compose.ui.unit.Dp) {
+    val colors = listOf(Color(0xFF635BFF), Color(0xFFE85D9C), Color(0xFF1FA9B5), Color(0xFFFF9F1C), Color(0xFF61B85C))
+    val body = colors[seed % colors.size]
+    Canvas(modifier = Modifier.size(avatarSize)) {
+        val unit = minOf(size.width, size.height)
+        drawCircle(body, radius = unit * .48f, center = Offset(unit * .5f, unit * .5f))
+        drawRoundRect(Color(0xFF20213A), Offset(unit * .18f, unit * .27f), Size(unit * .64f, unit * .48f), CornerRadius(unit * .14f, unit * .14f))
+        drawCircle(Color(0xFFE9FFFF), radius = unit * .09f, center = Offset(unit * .38f, unit * .5f))
+        drawCircle(Color(0xFFE9FFFF), radius = unit * .09f, center = Offset(unit * .62f, unit * .5f))
+        drawCircle(body, radius = unit * .035f, center = Offset(unit * .38f, unit * .5f))
+        drawCircle(body, radius = unit * .035f, center = Offset(unit * .62f, unit * .5f))
+        drawLine(Color(0xFF20213A), Offset(unit * .5f, unit * .27f), Offset(unit * .5f, unit * .12f), strokeWidth = unit * .06f)
+        drawCircle(LearnerYellow, radius = unit * .08f, center = Offset(unit * .5f, unit * .1f))
     }
 }
 
@@ -547,28 +747,122 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
 @Composable
 fun ReviewsScreen(
     api: EducationalApi,
+    userId: Long,
     reviews: List<ReviewReminderResponse>,
     onDone: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val pending = reviews.count { !it.completed }
+    var showCreateForm by remember { mutableStateOf(false) }
+    var title by remember { mutableStateOf("") }
+    var subject by remember { mutableStateOf("") }
+    var dueDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Calendar.getInstance().time)) }
+    var formMessage by remember { mutableStateOf<String?>(null) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionHeader(
-            title = "Revisões",
+            title = "Revisoes",
             subtitle = "$pending lembretes pendentes"
         )
 
         SummaryCard(
             title = "$pending",
-            subtitle = if (pending == 1) "revisão para fazer" else "revisões para fazer",
+            subtitle = if (pending == 1) "revisao para fazer" else "revisoes para fazer",
             accentColor = LearnerTeal
         )
 
+        Button(
+            onClick = {
+                showCreateForm = !showCreateForm
+                formMessage = null
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (showCreateForm) "Fechar formulario" else "+ Criar revisão")
+        }
+
+        if (showCreateForm) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text("Nova revisão", fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    OutlinedTextField(
+                        value = title,
+                        onValueChange = {
+                            title = it
+                            formMessage = null
+                        },
+                        label = { Text("Título") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = subject,
+                        onValueChange = {
+                            subject = it
+                            formMessage = null
+                        },
+                        label = { Text("Matéria") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = dueDate,
+                        onValueChange = {
+                            dueDate = it.take(10)
+                            formMessage = null
+                        },
+                        label = { Text("Data da revisão (AAAA-MM-DD)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    formMessage?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(
+                            onClick = {
+                                if (title.isBlank() || subject.isBlank() || dueDate.length != 10) {
+                                    formMessage = "Preencha título, matéria e data no formato AAAA-MM-DD."
+                                } else {
+                                    scope.apiCall(
+                                        action = { api.createReview(userId, title.trim(), subject.trim(), dueDate.trim()) },
+                                        onSuccess = {
+                                            title = ""
+                                            subject = ""
+                                            showCreateForm = false
+                                            onDone()
+                                        },
+                                        onError = { formMessage = it }
+                                    )
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Salvar")
+                        }
+                        TextButton(
+                            onClick = {
+                                showCreateForm = false
+                                formMessage = null
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Cancelar")
+                        }
+                    }
+                }
+            }
+        }
+
         if (reviews.isEmpty()) {
             EmptyStateCard(
-                title = "Sem revisões por enquanto",
-                subtitle = "Salve uma sessão de estudo para criar lembretes automaticamente."
+                title = "Sem revisoes por enquanto",
+                subtitle = "Salve uma sessao de estudo ou crie uma revisao manualmente."
             )
             return@Column
         }
@@ -579,6 +873,13 @@ fun ReviewsScreen(
                 onComplete = {
                     scope.apiCall(
                         action = { api.completeReview(review.id) },
+                        onSuccess = { onDone() },
+                        onError = {}
+                    )
+                },
+                onDelete = {
+                    scope.apiCall(
+                        action = { api.deleteReview(review.id) },
                         onSuccess = { onDone() },
                         onError = {}
                     )

@@ -1,5 +1,6 @@
 package com.frontend.educationalapplication
 
+import android.content.Context
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -39,6 +40,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -72,6 +74,8 @@ import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -89,13 +93,15 @@ fun PomodoroDetailScreen(
             onBack = onBack
         )
         PomodoroScreen(api = api, userId = userId, onDone = onDone)
+        BottomBackButton(onBack = onBack)
     }
 }
 
 @Composable
 fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
-    // Pomodoro screen state: input values, timer value, and current backend session id.
-    var subject by remember { mutableStateOf("Matemática") }
+    var subject by remember { mutableStateOf("Matematica") }
+    var content by remember { mutableStateOf("") }
+    var studyType by remember { mutableStateOf("Revisão") }
     var focusMinutes by remember { mutableStateOf("25") }
     var breakMinutes by remember { mutableStateOf("5") }
     var pomodoroId by remember { mutableLongStateOf(0L) }
@@ -105,16 +111,30 @@ fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
     var status by remember { mutableStateOf("Pronto") }
     var timerAccent by remember { mutableStateOf(LearnerPrimary) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val plannedSubjects = remember(userId) { loadStudyPlanningSubjects(context, userId) }
+    val selectedPlan = plannedSubjects.firstOrNull { it.name == subject }
+    val topics = selectedPlan?.topics.orEmpty()
+
+    LaunchedEffect(userId) {
+        if (userId > 0) {
+            syncPendingPomodoros(context, api, userId) { synced ->
+                if (synced > 0) {
+                    status = "$synced sessao offline sincronizada"
+                    onDone()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(running) {
-        // Simple local countdown. The backend stores the session, but the ticking happens here.
         while (running && remainingSeconds > 0) {
             delay(1.seconds)
             remainingSeconds -= 1
         }
-        if (running && remainingSeconds == 0 && pomodoroId != 0L) {
+        if (running && remainingSeconds == 0) {
             running = false
-            status = "Foco concluído"
+            status = "Foco concluido"
         }
     }
 
@@ -130,7 +150,28 @@ fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
             onSelected = { timerAccent = it }
         )
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Matéria") })
+        if (plannedSubjects.isNotEmpty()) {
+            Text("Matéria do Planejamento (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+            plannedSubjects.forEach { plan ->
+                PomodoroPlanChip(plan.name, subject == plan.name) {
+                    subject = plan.name
+                    content = ""
+                }
+            }
+            if (topics.isNotEmpty()) {
+                Text("Tópico/conteúdo (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+                topics.forEach { topic ->
+                    PomodoroPlanChip(topic.name, content == topic.name) { content = topic.name }
+                }
+            }
+        }
+        OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Materia") })
+        OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Tópico/conteúdo opcional") })
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf("Leitura", "Exercício", "Revisão").forEach { type ->
+                PomodoroPlanChip(type, studyType == type, Modifier.weight(1f)) { studyType = type }
+            }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NumberField("Foco", focusMinutes, { focusMinutes = it }, Modifier.weight(1f))
             NumberField("Pausa", breakMinutes, { breakMinutes = it }, Modifier.weight(1f))
@@ -140,41 +181,47 @@ fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
                 onClick = {
                     val focus = focusMinutes.toIntOrNull() ?: 25
                     val pause = breakMinutes.toIntOrNull() ?: 5
-                    // Start a Pomodoro on the backend, then use its id for extend/complete.
-                    scope.apiCall(
-                        action = { api.startPomodoro(userId, subject, focus, pause) },
-                        onSuccess = {
-                            pomodoroId = it.id
-                            totalSeconds = it.totalFocusMinutes * 60
-                            remainingSeconds = totalSeconds
-                            running = true
-                            status = "Em andamento"
-                        },
-                        onError = { status = it }
-                    )
+                    pomodoroId = 0L
+                    totalSeconds = focus * 60
+                    remainingSeconds = totalSeconds
+                    running = true
+                    status = "Em andamento"
+
+                    if (userId > 0) {
+                        scope.launch {
+                            runCatching { api.startPomodoro(userId, subject.ifBlank { "Pomodoro" }, focus, pause) }
+                                .onSuccess {
+                                    pomodoroId = it.id
+                                    status = "Sincronizado"
+                                }
+                                .onFailure {
+                                    status = "Offline - timer local"
+                                }
+                        }
+                    } else {
+                        status = "Modo convidado - timer local"
+                    }
                 },
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Começar")
+                Text("Comecar")
             }
-            Button(onClick = { running = !running }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { if (totalSeconds > 0) running = !running }, modifier = Modifier.weight(1f)) {
                 Text(if (running) "Pausar" else "Continuar")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             Button(
                 onClick = {
+                    if (totalSeconds == 0) return@Button
+                    totalSeconds += 5 * 60
+                    remainingSeconds += 5 * 60
+                    status = "+5 minutos"
                     if (pomodoroId != 0L) {
-                        // Extends both backend session and local countdown.
-                        scope.apiCall(
-                            action = { api.extendPomodoro(pomodoroId) },
-                            onSuccess = {
-                                totalSeconds += 5 * 60
-                                remainingSeconds += 5 * 60
-                                status = "+5 minutos"
-                            },
-                            onError = { status = it }
-                        )
+                        scope.launch {
+                            runCatching { api.extendPomodoro(pomodoroId) }
+                                .onFailure { status = "+5 local - sincronizacao pendente" }
+                        }
                     }
                 },
                 modifier = Modifier.weight(1f)
@@ -183,17 +230,30 @@ fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
             }
             Button(
                 onClick = {
+                    if (totalSeconds == 0) return@Button
+                    val completedMinutes = (totalSeconds / 60).coerceAtLeast(1)
+                    running = false
                     if (pomodoroId != 0L) {
-                        // Completing creates a study history entry in the backend.
-                        scope.apiCall(
-                            action = { api.completePomodoro(pomodoroId, "Concluído no protótipo Android") },
-                            onSuccess = {
-                                running = false
-                                status = "Salvo"
-                                onDone()
-                            },
-                            onError = { status = it }
-                        )
+                        scope.launch {
+                            val notes = listOf(
+                                "Concluido no Pomodoro",
+                                content.takeIf { it.isNotBlank() }?.let { "Topico: $it" },
+                                "Tipo: $studyType"
+                            ).filterNotNull().joinToString(" | ")
+                            runCatching { api.completePomodoro(pomodoroId, notes) }
+                                .onSuccess {
+                                    status = "Salvo"
+                                    onDone()
+                                }
+                                .onFailure {
+                                    savePendingPomodoro(context, subject, completedMinutes, content, studyType)
+                                    pomodoroId = 0L
+                                    status = "Salvo local - sincroniza depois"
+                                }
+                        }
+                    } else {
+                        savePendingPomodoro(context, subject, completedMinutes, content, studyType)
+                        status = "Salvo local - sincroniza depois"
                     }
                 },
                 modifier = Modifier.weight(1f)
@@ -202,6 +262,69 @@ fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
             }
         }
     }
+}
+
+private const val PENDING_POMODORO_PREFS = "offline_pomodoro_queue"
+private const val PENDING_POMODORO_KEY = "sessions"
+
+private fun savePendingPomodoro(context: Context, subject: String, minutes: Int, content: String = "", studyType: String = "Revisão") {
+    val prefs = context.getSharedPreferences(PENDING_POMODORO_PREFS, Context.MODE_PRIVATE)
+    val current = JSONArray(prefs.getString(PENDING_POMODORO_KEY, "[]"))
+    current.put(
+        JSONObject()
+            .put("subject", subject.ifBlank { "Pomodoro" })
+            .put("minutes", minutes.coerceAtLeast(1))
+            .put("content", content)
+            .put("studyType", studyType.toBackendStudyType())
+            .put("createdAt", System.currentTimeMillis())
+    )
+    prefs.edit().putString(PENDING_POMODORO_KEY, current.toString()).apply()
+}
+
+private suspend fun syncPendingPomodoros(
+    context: Context,
+    api: EducationalApi,
+    userId: Long,
+    onSynced: (Int) -> Unit
+) {
+    val prefs = context.getSharedPreferences(PENDING_POMODORO_PREFS, Context.MODE_PRIVATE)
+    val current = JSONArray(prefs.getString(PENDING_POMODORO_KEY, "[]"))
+    if (current.length() == 0) {
+        onSynced(0)
+        return
+    }
+
+    val remaining = JSONArray()
+    var synced = 0
+    for (index in 0 until current.length()) {
+        val item = current.getJSONObject(index)
+        val subject = item.optString("subject", "Pomodoro")
+        val minutes = item.optInt("minutes", 1).coerceAtLeast(1)
+        val content = item.optString("content", "Pomodoro offline")
+        val studyType = item.optString("studyType", "REVIEW")
+        val result = runCatching {
+            api.createManualSession(
+                userId = userId,
+                subject = subject,
+                durationMinutes = minutes,
+                studyType = studyType,
+                content = content,
+                objective = "Sessao sincronizada depois de usar offline",
+                notes = "Criada localmente no Pomodoro e sincronizada depois.",
+                learned = "",
+                difficulties = "",
+                nextAction = "",
+                focusRating = 4
+            )
+        }
+        if (result.isSuccess) {
+            synced += 1
+        } else {
+            remaining.put(item)
+        }
+    }
+    prefs.edit().putString(PENDING_POMODORO_KEY, remaining.toString()).apply()
+    onSynced(synced)
 }
 
 @Composable
@@ -267,6 +390,25 @@ fun PomodoroColorSelector(selected: Color, onSelected: (Color) -> Unit) {
                     .clickable { onSelected(color) }
             )
         }
+    }
+}
+
+@Composable
+private fun PomodoroPlanChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = if (selected) Color.White else LearnerPrimary,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
     }
 }
 

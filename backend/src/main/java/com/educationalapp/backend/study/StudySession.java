@@ -32,6 +32,8 @@ public class StudySession {
     private String difficulties;
     private String nextAction;
     private Integer focusRating;
+    private Integer exerciseCount;
+    private Integer correctAnswers;
 
     @Enumerated(EnumType.STRING)
     private StudyType studyType;
@@ -42,7 +44,7 @@ public class StudySession {
     public StudySession(Long userId, String subject, int durationMinutes, SessionSource source,
                         LocalDateTime startedAt, LocalDateTime endedAt, String content, String objective,
                         String notes, String learned, String difficulties, String nextAction,
-                        Integer focusRating, StudyType studyType) {
+                        Integer focusRating, StudyType studyType, Integer exerciseCount, Integer correctAnswers) {
         this.userId = userId;
         this.subject = subject;
         this.durationMinutes = durationMinutes;
@@ -57,6 +59,8 @@ public class StudySession {
         this.nextAction = nextAction;
         this.focusRating = focusRating;
         this.studyType = studyType;
+        this.exerciseCount = exerciseCount;
+        this.correctAnswers = correctAnswers;
     }
 
     public Long getId() {
@@ -117,5 +121,13 @@ public class StudySession {
 
     public StudyType getStudyType() {
         return studyType;
+    }
+
+    public Integer getExerciseCount() {
+        return exerciseCount;
+    }
+
+    public Integer getCorrectAnswers() {
+        return correctAnswers;
     }
 }

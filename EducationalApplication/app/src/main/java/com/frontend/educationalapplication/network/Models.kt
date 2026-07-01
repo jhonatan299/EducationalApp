@@ -26,6 +26,8 @@ data class StudySessionResponse(
     val subject: String,
     val durationMinutes: Int,
     val source: String,
+    val startedAt: String?,
+    val endedAt: String?,
     val studyType: String?,
     val content: String?,
     val objective: String?,
@@ -33,7 +35,9 @@ data class StudySessionResponse(
     val learned: String?,
     val difficulties: String?,
     val nextAction: String?,
-    val focusRating: Int?
+    val focusRating: Int?,
+    val exerciseCount: Int?,
+    val correctAnswers: Int?
 )
 
 data class ReviewReminderResponse(
@@ -93,4 +97,47 @@ data class DailyStudyMinutes(
 data class SubjectStudyMinutes(
     val subject: String,
     val minutes: Int
+)
+
+data class GeneratedQuizResponse(
+    val source: String,
+    val gameMode: String,
+    val questions: List<GeneratedQuestionResponse>
+)
+
+data class GeneratedQuestionResponse(
+    val question: String,
+    val options: List<String>,
+    val correctIndex: Int,
+    val explanation: String
+)
+
+data class SavedQuestionResponse(
+    val id: Long,
+    val subject: String,
+    val gameMode: String,
+    val question: String,
+    val options: List<String>,
+    val correctIndex: Int,
+    val explanation: String
+)
+
+data class QuestionListResponse(
+    val id: Long,
+    val name: String,
+    val questionCount: Long,
+    val questionIds: List<Long>
+)
+
+data class RankingResponse(
+    val period: String,
+    val players: List<RankingPlayerResponse>
+)
+
+data class RankingPlayerResponse(
+    val userId: Long,
+    val name: String,
+    val minutes: Int,
+    val position: Int,
+    val currentUser: Boolean
 )

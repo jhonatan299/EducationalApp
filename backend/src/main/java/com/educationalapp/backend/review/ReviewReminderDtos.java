@@ -1,5 +1,7 @@
 package com.educationalapp.backend.review;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
 public final class ReviewReminderDtos {
@@ -26,5 +28,13 @@ public final class ReviewReminderDtos {
                     reminder.isCompleted()
             );
         }
+    }
+
+    public record CreateReviewReminderRequest(
+            @NotNull Long userId,
+            @NotBlank String title,
+            @NotBlank String subject,
+            @NotNull LocalDate dueDate
+    ) {
     }
 }

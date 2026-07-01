@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -71,6 +72,8 @@ import com.frontend.educationalapplication.ui.theme.LearnerYellow
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.net.SocketTimeoutException
+import java.net.UnknownHostException
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -173,6 +176,262 @@ fun EmptyStateCard(title: String, subtitle: String) {
 }
 
 @Composable
+fun BottomBackButton(
+    onBack: () -> Unit,
+    label: String = "Voltar",
+    modifier: Modifier = Modifier
+) {
+    TextButton(
+        onClick = onBack,
+        modifier = modifier
+    ) {
+        Text("‹ $label", color = LearnerPrimary, fontWeight = FontWeight.Bold)
+    }
+}
+
+enum class FriendlyErrorCause {
+    NoInternet,
+    Server,
+    NotFound,
+    Unauthorized,
+    Unknown
+}
+
+data class FriendlyError(
+    val cause: FriendlyErrorCause,
+    val title: String,
+    val description: String,
+    val actionLabel: String = "Tentar novamente"
+)
+
+fun Throwable.toFriendlyError(): FriendlyError {
+    val raw = listOfNotNull(message, cause?.message, javaClass.simpleName).joinToString(" ").lowercase()
+    return when {
+        this is UnknownHostException ||
+            this is SocketTimeoutException ||
+            "unable to resolve host" in raw ||
+            "failed to connect" in raw ||
+            "timeout" in raw ||
+            "network is unreachable" in raw -> FriendlyError(
+                cause = FriendlyErrorCause.NoInternet,
+                title = "Sem internet",
+                description = "Parece que o app nao conseguiu conectar. Verifique sua internet e tente novamente."
+            )
+
+        "404" in raw || "not found" in raw -> FriendlyError(
+            cause = FriendlyErrorCause.NotFound,
+            title = "Nao encontramos isso",
+            description = "Esse conteudo pode ter sido removido, movido ou ainda nao estar disponivel."
+        )
+
+        "401" in raw || "403" in raw || "unauthorized" in raw || "forbidden" in raw -> FriendlyError(
+            cause = FriendlyErrorCause.Unauthorized,
+            title = "Sessao expirada",
+            description = "Sua sessao pode ter expirado. Entre novamente para continuar.",
+            actionLabel = "Voltar ao login"
+        )
+
+        "500" in raw || "502" in raw || "503" in raw || "504" in raw ||
+            "connection refused" in raw ||
+            "server" in raw -> FriendlyError(
+                cause = FriendlyErrorCause.Server,
+                title = "Servidor indisponivel",
+                description = "Nosso servidor nao respondeu como esperado. Tente de novo em alguns instantes."
+            )
+
+        else -> FriendlyError(
+            cause = FriendlyErrorCause.Unknown,
+            title = "Algo saiu do caminho",
+            description = "Nao conseguimos concluir essa acao agora. Tente novamente daqui a pouco."
+        )
+    }
+}
+
+fun String.toFriendlyError(): FriendlyError =
+    IllegalStateException(this).toFriendlyError()
+
+@Composable
+fun ErrorStateCard(
+    error: FriendlyError,
+    modifier: Modifier = Modifier,
+    onRetry: (() -> Unit)? = null,
+    onGoHome: (() -> Unit)? = null
+) {
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            ErrorIllustration(error.cause)
+            Text(
+                text = error.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = error.description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = LearnerMutedText,
+                textAlign = TextAlign.Center
+            )
+            ErrorCausePill(error.cause)
+            onRetry?.let {
+                Button(onClick = it, modifier = Modifier.fillMaxWidth()) {
+                    Text(error.actionLabel)
+                }
+            }
+            onGoHome?.let {
+                TextButton(onClick = it) {
+                    Text("Voltar para o inicio", color = LearnerPrimary, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ErrorCausePill(cause: FriendlyErrorCause) {
+    val label = when (cause) {
+        FriendlyErrorCause.NoInternet -> "Causa: conexao com a internet"
+        FriendlyErrorCause.Server -> "Causa: servidor indisponivel"
+        FriendlyErrorCause.NotFound -> "Causa: conteudo nao encontrado"
+        FriendlyErrorCause.Unauthorized -> "Causa: sessao ou permissao"
+        FriendlyErrorCause.Unknown -> "Causa: erro inesperado"
+    }
+    Box(
+        modifier = Modifier
+            .background(LearnerCoral.copy(alpha = .12f), RoundedCornerShape(99.dp))
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(label, color = LearnerCoral, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun ErrorIllustration(cause: FriendlyErrorCause) {
+    Box(
+        modifier = Modifier
+            .size(128.dp)
+            .background(LearnerPrimaryTint, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(86.dp)) {
+            when (cause) {
+                FriendlyErrorCause.NoInternet -> {
+                    rotate(-12f) {
+                        drawRoundRect(
+                            color = LearnerPrimary,
+                            topLeft = Offset(size.width * .16f, size.height * .25f),
+                            size = Size(size.width * .68f, size.height * .5f),
+                            cornerRadius = CornerRadius(14f, 14f)
+                        )
+                        drawArc(
+                            color = Color.White,
+                            startAngle = 210f,
+                            sweepAngle = 120f,
+                            useCenter = false,
+                            topLeft = Offset(size.width * .3f, size.height * .34f),
+                            size = Size(size.width * .4f, size.height * .32f),
+                            style = Stroke(width = 5f)
+                        )
+                        drawArc(
+                            color = Color.White,
+                            startAngle = 215f,
+                            sweepAngle = 110f,
+                            useCenter = false,
+                            topLeft = Offset(size.width * .38f, size.height * .44f),
+                            size = Size(size.width * .24f, size.height * .18f),
+                            style = Stroke(width = 5f)
+                        )
+                        drawCircle(Color.White, radius = 4.5f, center = Offset(size.width * .5f, size.height * .63f))
+                    }
+                }
+
+                FriendlyErrorCause.NotFound -> {
+                    drawCircle(
+                        color = Color.White,
+                        radius = size.minDimension * .31f,
+                        center = Offset(size.width * .42f, size.height * .38f),
+                        style = Stroke(width = 8f)
+                    )
+                    drawLine(
+                        color = LearnerPrimary,
+                        start = Offset(size.width * .62f, size.height * .62f),
+                        end = Offset(size.width * .84f, size.height * .84f),
+                        strokeWidth = 10f
+                    )
+                    drawLine(
+                        color = LearnerCoral,
+                        start = Offset(size.width * .33f, size.height * .38f),
+                        end = Offset(size.width * .51f, size.height * .38f),
+                        strokeWidth = 6f
+                    )
+                }
+
+                FriendlyErrorCause.Server -> {
+                    repeat(3) { index ->
+                        val top = size.height * (.22f + index * .19f)
+                        drawRoundRect(
+                            color = LearnerPrimary,
+                            topLeft = Offset(size.width * .2f, top),
+                            size = Size(size.width * .6f, size.height * .13f),
+                            cornerRadius = CornerRadius(10f, 10f)
+                        )
+                        drawCircle(Color.White, radius = 4f, center = Offset(size.width * .3f, top + size.height * .065f))
+                    }
+                    drawLine(
+                        color = LearnerCoral,
+                        start = Offset(size.width * .28f, size.height * .78f),
+                        end = Offset(size.width * .72f, size.height * .78f),
+                        strokeWidth = 7f
+                    )
+                }
+
+                FriendlyErrorCause.Unauthorized -> {
+                    drawRoundRect(
+                        color = LearnerPrimary,
+                        topLeft = Offset(size.width * .24f, size.height * .42f),
+                        size = Size(size.width * .52f, size.height * .38f),
+                        cornerRadius = CornerRadius(12f, 12f)
+                    )
+                    drawArc(
+                        color = LearnerPrimary,
+                        startAngle = 200f,
+                        sweepAngle = 140f,
+                        useCenter = false,
+                        topLeft = Offset(size.width * .3f, size.height * .16f),
+                        size = Size(size.width * .4f, size.height * .46f),
+                        style = Stroke(width = 8f)
+                    )
+                    drawCircle(Color.White, radius = 5f, center = Offset(size.width * .5f, size.height * .62f))
+                }
+
+                FriendlyErrorCause.Unknown -> {
+                    drawCircle(LearnerPrimary, radius = size.minDimension * .32f, center = Offset(size.width * .5f, size.height * .48f))
+                    drawLine(
+                        color = Color.White,
+                        start = Offset(size.width * .5f, size.height * .3f),
+                        end = Offset(size.width * .5f, size.height * .52f),
+                        strokeWidth = 7f
+                    )
+                    drawCircle(Color.White, radius = 4.5f, center = Offset(size.width * .5f, size.height * .66f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun CalendarDayCard(day: CalendarDayResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -240,7 +499,11 @@ fun CalendarDayCard(day: CalendarDayResponse) {
 }
 
 @Composable
-fun ReviewReminderCard(review: ReviewReminderResponse, onComplete: () -> Unit) {
+fun ReviewReminderCard(
+    review: ReviewReminderResponse,
+    onComplete: () -> Unit,
+    onDelete: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -287,6 +550,12 @@ fun ReviewReminderCard(review: ReviewReminderResponse, onComplete: () -> Unit) {
                     .clip(RoundedCornerShape(14.dp))
             ) {
                 Text(if (review.completed) "Revisada" else "Marcar como revisada")
+            }
+            TextButton(
+                onClick = onDelete,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Eliminar revisão", color = LearnerCoral, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -363,15 +632,15 @@ fun timerText(seconds: Int): String {
 
 fun String.toBackendStudyType(): String =
     when (trim().uppercase()) {
-        "TEORIA" -> "THEORY"
-        "PRATICA", "PRÁTICA" -> "PRACTICE"
-        "EXERCICIOS", "EXERCÍCIOS" -> "EXERCISES"
-        "REVISAO", "REVISÃO" -> "REVIEW"
-        "VIDEOAULA", "VÍDEOAULA" -> "VIDEO_LESSON"
+        "TEORIA", "LEITURA", "RESUMO", "OUTRO" -> "THEORY"
+        "PRATICA", "PR?TICA", "EXERCICIO", "EXERC?CIO", "EXERCICIOS", "EXERC?CIOS" -> "EXERCISES"
+        "REVISAO", "REVIS?O" -> "REVIEW"
+        "VIDEOAULA", "V?DEOAULA" -> "VIDEO_LESSON"
         "SIMULADO" -> "MOCK_TEST"
         "" -> "THEORY"
         else -> trim().uppercase()
     }
+
 
 fun String?.toStudyTypeLabel(): String? =
     when (this) {
@@ -397,6 +666,11 @@ fun <T> CoroutineScope.apiCall(
 ) {
     // Small helper so every button can call the backend with the same success/error pattern.
     launch {
+        val result = runCatching { action() }
+        result.onSuccess(onSuccess)
+        result.exceptionOrNull()?.let { onError(it.toFriendlyError().description) }
+        return@launch
+
         runCatching { action() }
             .onSuccess(onSuccess)
             .onFailure { onError(it.message ?: "Falha na requisição") }

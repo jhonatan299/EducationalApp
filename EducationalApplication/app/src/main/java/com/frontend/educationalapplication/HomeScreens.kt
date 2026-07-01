@@ -3,6 +3,7 @@ package com.frontend.educationalapplication
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -43,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -50,6 +53,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -83,9 +87,10 @@ fun HomeScreen(
     api: EducationalApi,
     user: AuthResponse,
     isGuest: Boolean,
-    onUserUpdated: (AuthResponse) -> Unit
+    onUserUpdated: (AuthResponse) -> Unit,
+    onLogout: () -> Unit
 ) {
-    val tabs = listOf("Home", "Relatório", "Calendário", "Estatísticas", "Metas")
+    val tabs = listOf("Home", "Relatório", "Calendário", "Estatísticas", "Metas", "Jogos")
     var selectedTab by remember { mutableIntStateOf(0) }
     var homeRoute by remember { mutableStateOf(HomeRoute.Main) }
     var selectedLearningPath by remember { mutableStateOf("Matematica aplicada") }
@@ -101,6 +106,7 @@ fun HomeScreen(
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     fun refresh() {
         if (isGuest) {
@@ -113,6 +119,7 @@ fun HomeScreen(
         // Calls several backend endpoints and stores the results in screen state.
         scope.apiCall(
             action = {
+                val synced = syncPendingStudySessions(context, api, user.userId)
                 ScreenData(
                     sessions = api.studySessions(user.userId),
                     goals = api.goals(user.userId),
@@ -120,19 +127,33 @@ fun HomeScreen(
                     reviews = api.reviews(user.userId),
                     calendar = api.calendar(user.userId),
                     progress = api.progress(user.userId)
-                )
+                ) to synced
             },
             onSuccess = {
-                sessions = it.sessions
-                goals = it.goals
-                missions = it.missions
-                reviews = it.reviews
-                calendar = it.calendar
-                progress = it.progress
+                val data = it.first
+                sessions = data.sessions
+                goals = data.goals
+                missions = data.missions
+                reviews = data.reviews
+                calendar = data.calendar
+                progress = data.progress
+                cacheScreenData(context, user.userId, data)
+                message = if (it.second > 0) "${it.second} sessao offline sincronizada." else null
                 loading = false
             },
             onError = {
-                message = it
+                val cached = loadCachedScreenData(context, user.userId)
+                if (cached != null) {
+                    sessions = cached.sessions
+                    goals = cached.goals
+                    missions = cached.missions
+                    reviews = cached.reviews
+                    calendar = cached.calendar
+                    progress = cached.progress
+                    message = "Offline: mostrando os ultimos dados salvos neste aparelho."
+                } else {
+                    message = it
+                }
                 loading = false
             }
         )
@@ -143,6 +164,91 @@ fun HomeScreen(
         refresh()
     }
 
+    if (homeRoute == HomeRoute.QuizPoker) {
+        Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+            QuizPokerMainScreen(onBack = { homeRoute = HomeRoute.Main })
+        }
+    } else if (homeRoute == HomeRoute.PsychBluff) {
+        Box(modifier = Modifier.fillMaxSize().safeDrawingPadding()) {
+            PsychBluffMainScreen(onBack = { homeRoute = HomeRoute.Main })
+        }
+    } else if (homeRoute == HomeRoute.AiQuizGenerator) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            AiQuizGeneratorScreen(api = api, onBack = { homeRoute = HomeRoute.Main })
+        }
+    } else if (homeRoute == HomeRoute.QuestionBank) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            QuestionBankScreen(api = api, onBack = { homeRoute = HomeRoute.Main })
+        }
+    } else if (homeRoute == HomeRoute.QuizSolo) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(horizontal = 20.dp, vertical = 18.dp)
+        ) {
+            QuizSoloScreen(
+                api = api,
+                userId = user.userId,
+                onBack = { homeRoute = HomeRoute.Main },
+                onCoinsBalanceUpdated = { coins -> onUserUpdated(user.copy(coins = coins)) }
+            )
+        }
+    } else if (homeRoute == HomeRoute.Ranking) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            RankingDashboard(api = api, userId = user.userId, onBack = { homeRoute = HomeRoute.Main })
+        }
+    } else if (homeRoute == HomeRoute.WeeklyProgress) {
+        Scaffold(
+            containerColor = MaterialTheme.colorScheme.background,
+            bottomBar = {
+                BottomNavBar(
+                    selectedIndex = selectedTab,
+                    items = tabs,
+                    onSelected = {
+                        selectedTab = it
+                        homeRoute = HomeRoute.Main
+                    }
+                )
+            }
+        ) { innerPadding ->
+            Column(
+                modifier = Modifier
+                    .padding(innerPadding)
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                verticalArrangement = Arrangement.spacedBy(18.dp)
+            ) {
+                WeeklyProgressTasksScreen(
+                    calendar = calendar,
+                    reviews = reviews,
+                    goals = goals,
+                    onBack = { homeRoute = HomeRoute.Main }
+                )
+            }
+        }
+    } else if (homeRoute == HomeRoute.ChangePassword) {
+        ChangePasswordScreen(
+            onBack = { homeRoute = HomeRoute.Profile }
+        )
+    } else {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background,
         bottomBar = {
@@ -175,7 +281,20 @@ fun HomeScreen(
                     trackColor = MaterialTheme.colorScheme.primaryContainer
                 )
             }
-            message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            message?.let {
+                if (it.startsWith("Modo convidado") || it.startsWith("Offline:") || it.contains("sincronizada")) {
+                    Text(it, color = LearnerMutedText)
+                } else {
+                    ErrorStateCard(
+                        error = it.toFriendlyError(),
+                        onRetry = { refresh() },
+                        onGoHome = {
+                            selectedTab = 0
+                            homeRoute = HomeRoute.Main
+                        }
+                    )
+                }
+            }
 
             when (selectedTab) {
                 0 -> when (homeRoute) {
@@ -191,7 +310,9 @@ fun HomeScreen(
                         onOpenLearningPath = { path ->
                             selectedLearningPath = path
                             homeRoute = HomeRoute.LearningPath
-                        }
+                        },
+                        onOpenWeeklyProgress = { homeRoute = HomeRoute.WeeklyProgress },
+                        onOpenQuizPoker = { homeRoute = HomeRoute.QuizPoker }
                     )
                     HomeRoute.Pomodoro -> PomodoroDetailScreen(
                         api = api,
@@ -204,6 +325,8 @@ fun HomeScreen(
                         user = user,
                         reviews = reviews,
                         onUserUpdated = onUserUpdated,
+                        onChangePassword = { homeRoute = HomeRoute.ChangePassword },
+                        onLogout = onLogout,
                         onBack = { homeRoute = HomeRoute.Main }
                     )
                     HomeRoute.Help -> HelpScreen(onBack = { homeRoute = HomeRoute.Main })
@@ -212,16 +335,161 @@ fun HomeScreen(
                         onBack = { homeRoute = HomeRoute.Main },
                         onStartFocus = { homeRoute = HomeRoute.Pomodoro }
                     )
+                    HomeRoute.WeeklyProgress -> Unit
+                    HomeRoute.QuizPoker -> Unit
+                    HomeRoute.PsychBluff -> Unit
+                    HomeRoute.AiQuizGenerator -> Unit
+                    HomeRoute.QuestionBank -> Unit
+                    HomeRoute.QuizSolo -> Unit
+                    HomeRoute.Ranking -> Unit
+                    HomeRoute.ChangePassword -> Unit
                 }
                 1 -> ReportReviewsScreen(api, user.userId, sessions, reviews, onDone = { refresh() })
                 2 -> CalendarScreen(calendar)
-                3 -> ProgressDashboard(progress, goals)
+                3 -> ProgressDashboard(progress, goals, onOpenRanking = { homeRoute = HomeRoute.Ranking })
                 4 -> GoalsMissionsDashboard(api, goals, missions, onClaimed = {
                     onUserUpdated(user.copy(coins = user.coins + it))
                     refresh()
                 })
+                5 -> GamesHubScreen(
+                    onOpenQuizSolo = { homeRoute = HomeRoute.QuizSolo },
+                    onOpenQuizPoker = { homeRoute = HomeRoute.QuizPoker },
+                    onOpenPsychBluff = { homeRoute = HomeRoute.PsychBluff },
+                    onOpenAiQuizGenerator = { homeRoute = HomeRoute.AiQuizGenerator },
+                    onOpenQuestionBank = { homeRoute = HomeRoute.QuestionBank }
+                )
             }
         }
+    }
+}
+}
+
+@Composable
+fun GamesHubScreen(
+    onOpenQuizSolo: () -> Unit,
+    onOpenQuizPoker: () -> Unit,
+    onOpenPsychBluff: () -> Unit,
+    onOpenAiQuizGenerator: () -> Unit,
+    onOpenQuestionBank: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text("Jogos", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
+        Text("Desafie amigos e aprenda jogando.", color = LearnerMutedText)
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuizSolo),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(58.dp).background(LearnerPrimaryTint, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text("1P", fontSize = 24.sp, color = LearnerPrimary, fontWeight = FontWeight.Black) }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Quiz Solo", color = Color(0xFF111827), fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Responda perguntas, teste seus conhecimentos e ganhe moedas.", color = LearnerMutedText, fontSize = 13.sp)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(LearnerPrimary)
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text("Jogar agora", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                    }
+                }
+                Text(">", color = LearnerPrimary, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAiQuizGenerator),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF5B4BFF)),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(58.dp).background(Color.White.copy(alpha = .2f), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text("AI", fontSize = 24.sp, color = Color.White, fontWeight = FontWeight.Black) }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Gerar quiz com IA", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Cole texto e crie perguntas para Poker ou Psych", color = Color.White.copy(alpha = .78f), fontSize = 13.sp)
+                }
+                Text(">", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuizPoker),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF123D25)),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(58.dp).background(Color(0xFFFFD700), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text("P", fontSize = 30.sp, color = Color(0xFF123D25), fontWeight = FontWeight.Black) }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Quiz Poker", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Trivia entre amigos com fichas e apostas", color = Color.White.copy(alpha = .76f), fontSize = 13.sp)
+                }
+                Text(">", color = Color(0xFFFFD700), fontSize = 32.sp)
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuestionBank),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(58.dp).background(LearnerPrimaryTint, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text("Q", fontSize = 26.sp, color = LearnerPrimary, fontWeight = FontWeight.Black) }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Banco de perguntas", color = Color(0xFF111827), fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Buscar, reclassificar e eliminar perguntas salvas", color = LearnerMutedText, fontSize = 13.sp)
+                }
+                Text(">", color = LearnerPrimary, fontSize = 28.sp, fontWeight = FontWeight.Black)
+            }
+        }
+        Card(
+            modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenPsychBluff),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFF2D1054)),
+            shape = RoundedCornerShape(24.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(20.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier.size(58.dp).background(Color(0xFFFFD700), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) { Text("?", fontSize = 30.sp, color = Color(0xFF2D1054), fontWeight = FontWeight.Black) }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Psych! Bluff Trivia", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Invente respostas e engane seus amigos", color = Color.White.copy(alpha = .76f), fontSize = 13.sp)
+                }
+                Text(">", color = Color(0xFFFFD700), fontSize = 32.sp)
+            }
+        }
+        Text("Mais dinamicas em breve", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+        Text("Este espaco fica pronto para os proximos jogos entre amigos.", color = LearnerMutedText)
     }
 }
 
@@ -230,7 +498,15 @@ enum class HomeRoute {
     Pomodoro,
     Profile,
     Help,
-    LearningPath
+    LearningPath,
+    QuizPoker,
+    PsychBluff,
+    AiQuizGenerator,
+    QuestionBank,
+    QuizSolo,
+    Ranking,
+    WeeklyProgress,
+    ChangePassword
 }
 
 @Composable
@@ -243,7 +519,9 @@ fun HomeMainScreen(
     onOpenPomodoro: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenHelp: () -> Unit,
-    onOpenLearningPath: (String) -> Unit
+    onOpenLearningPath: (String) -> Unit,
+    onOpenWeeklyProgress: () -> Unit,
+    onOpenQuizPoker: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val normalizedQuery = searchQuery.trim().lowercase()
@@ -271,7 +549,7 @@ fun HomeMainScreen(
         )
     }
     if (showLearningPath) {
-        ProgressOverview(progress = progress, sessions = sessions, goals = goals, onOpenLearningPath = onOpenLearningPath)
+        ProgressOverview(progress = progress, sessions = sessions, goals = goals, onOpenWeeklyProgress = onOpenWeeklyProgress)
     }
     if (showPomodoro) {
         HomeFeatureCard(
@@ -298,94 +576,344 @@ fun ProgressOverview(
     progress: ProgressResponse?,
     sessions: List<StudySessionResponse>,
     goals: List<GoalResponse>,
-    onOpenLearningPath: (String) -> Unit
+    onOpenWeeklyProgress: () -> Unit
 ) {
     val primaryGoal = goals.firstOrNull()
-    val progressPercent = ((primaryGoal?.progressPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+    val goalProgress = ((primaryGoal?.progressPercent ?: 0.0) / 100.0).toFloat().coerceIn(0f, 1f)
+    val weeklyTargetMinutes = 300
+    val weeklyMinutes = progress?.totalMinutes ?: 0
+    val weeklyProgress = (weeklyMinutes.toFloat() / weeklyTargetMinutes).coerceIn(0f, 1f)
+    val displayProgress = if (primaryGoal != null) goalProgress else weeklyProgress
+    val percent = (displayProgress * 100).toInt()
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onOpenWeeklyProgress() },
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "Seu progresso de estudo",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(99.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-            ) {
+        Row(
+            modifier = Modifier.padding(18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    text = "Seu progresso de estudo",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Color(0xFF0F2A56),
+                    fontWeight = FontWeight.Bold
+                )
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth(progressPercent)
+                        .fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(99.dp))
-                        .background(LearnerTeal)
+                        .background(Color(0xFFE8EEFF))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(displayProgress.coerceAtLeast(0.02f))
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(99.dp))
+                            .background(Color(0xFF2F6BFF))
+                    )
+                }
+                Text(
+                    text = primaryGoal?.let {
+                        "${it.currentMinutes}/${it.targetMinutes} min na meta atual - $percent%"
+                    } ?: "$weeklyMinutes/$weeklyTargetMinutes min nesta semana",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF35507A)
                 )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0xFFEAF0FF))
+                        .clickable { onOpenWeeklyProgress() }
+                        .padding(horizontal = 16.dp, vertical = 9.dp)
+                ) {
+                    Text("Ver semana", color = Color(0xFF315DFF), fontWeight = FontWeight.Black)
+                }
             }
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = primaryGoal?.let {
-                    "${it.currentMinutes}/${it.targetMinutes} min na meta atual - ${(progressPercent * 100).toInt()}%"
-                } ?: "Defina uma meta para acompanhar seu progresso",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+            WeeklyProgressRing(
+                progress = displayProgress,
+                label = "$percent%",
+                onClick = onOpenWeeklyProgress
             )
-        }
-        Spacer(Modifier.width(18.dp))
-        Box(
-            modifier = Modifier
-                .size(68.dp)
-                .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "${(progressPercent * 100).toInt()}%",
-                color = LearnerTeal,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            if (false) {
-            Text("🙂", fontSize = 28.sp)
-            }
         }
     }
+}
 
-    if (false) {
-    Spacer(Modifier.height(18.dp))
-    Text(
-        text = "Sua trilha de estudo",
-        style = MaterialTheme.typography.titleLarge,
-        color = MaterialTheme.colorScheme.onBackground
-    )
-    Text(
-        text = "Escolha uma atividade para continuar",
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-    StudyProgressCard(
-        title = "Gramática básica",
-        action = "Continuar",
-        progress = "00/30",
-        accent = Color(0xFF6A63FF),
-        variant = 0,
-        onClick = { onOpenLearningPath("Gramatica basica") }
-    )
-    StudyProgressCard(
-        title = "Conversa guiada",
-        action = "Começar",
-        progress = "00/30",
-        accent = Color(0xFFE88CB9),
-        variant = 1,
-        onClick = { onOpenLearningPath("Conversa guiada") }
-    )
+@Composable
+private fun WeeklyProgressRing(progress: Float, label: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(78.dp)
+            .clip(CircleShape)
+            .background(Color(0xFFEAF0FF))
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(modifier = Modifier.size(68.dp)) {
+            drawCircle(
+                color = Color(0xFFD7E0FF),
+                radius = size.minDimension * .42f,
+                center = Offset(size.width / 2f, size.height / 2f),
+                style = Stroke(width = 8f, cap = StrokeCap.Round)
+            )
+            drawArc(
+                color = Color(0xFF315DFF),
+                startAngle = -90f,
+                sweepAngle = 360f * progress.coerceIn(0f, 1f),
+                useCenter = false,
+                topLeft = Offset(size.width * .08f, size.height * .08f),
+                size = Size(size.width * .84f, size.height * .84f),
+                style = Stroke(width = 8f, cap = StrokeCap.Round)
+            )
+        }
+        Text(
+            text = label,
+            color = Color(0xFF315DFF),
+            fontWeight = FontWeight.Black,
+            fontSize = 14.sp
+        )
+    }
+}
+
+@Composable
+fun WeeklyProgressTasksScreen(
+    calendar: List<CalendarDayResponse>,
+    reviews: List<ReviewReminderResponse>,
+    goals: List<GoalResponse>,
+    onBack: () -> Unit
+) {
+    val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()) }
+    var weekOffset by remember { mutableIntStateOf(0) }
+    var selectedIndex by remember { mutableIntStateOf(0) }
+    var selectedFilter by remember { mutableStateOf("TODOS") }
+
+    val today = remember { Calendar.getInstance() }
+    val weekStart = remember(weekOffset) {
+        (today.clone() as Calendar).apply {
+            add(Calendar.WEEK_OF_YEAR, weekOffset)
+            firstDayOfWeek = Calendar.MONDAY
+            set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+        }
+    }
+    val weekDays = remember(weekOffset) {
+        List(7) { index ->
+            (weekStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, index) }
+        }
+    }
+    val selectedDate = dateFormat.format(weekDays[selectedIndex].time)
+    val selectedCalendarDay = calendar.firstOrNull { it.date == selectedDate }
+    val dayStudyItems = selectedCalendarDay?.subjects.orEmpty()
+    val dayReviews = reviews.filter { it.dueDate == selectedDate }
+    val dayGoals = goals.filter { it.dueDate == selectedDate }
+    val dayCards = buildList {
+        dayStudyItems.forEach {
+            add(WeeklyTaskCardData("Estudo registrado", it.subject, "${it.minutes} min", "CONCLUIDA", LearnerPrimary, priority = false, completed = true))
+        }
+        dayReviews.forEach {
+            add(WeeklyTaskCardData("Revisao", it.title, it.subject, if (it.completed) "CONCLUIDA" else "PRIORIDADE", LearnerCoral, priority = !it.completed, completed = it.completed))
+        }
+        dayGoals.forEach {
+            add(WeeklyTaskCardData("Meta da semana", it.title, "${it.currentMinutes}/${it.targetMinutes} min", if (it.completed) "CONCLUIDA" else "PRIORIDADE", LearnerTeal, priority = !it.completed, completed = it.completed))
+        }
+    }
+    val filteredCards = when (selectedFilter) {
+        "PRIORIDADE" -> dayCards.filter { it.priority }
+        "CONCLUIDAS" -> dayCards.filter { it.completed }
+        else -> dayCards
+    }
+
+    Column(
+        modifier = Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(18.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Text("Semana de estudos", fontFamily = CircularDisplayFamily, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color(0xFF111827))
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DayNavButton("<") {
+                if (selectedIndex == 0) {
+                    weekOffset -= 1
+                    selectedIndex = 6
+                } else {
+                    selectedIndex -= 1
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                weekDays.forEachIndexed { index, day ->
+                    val selected = index == selectedIndex
+                    WeeklyDayChip(
+                        month = monthPt(day.get(Calendar.MONTH)),
+                        day = day.get(Calendar.DAY_OF_MONTH).toString(),
+                        name = dayNamePt(day.get(Calendar.DAY_OF_WEEK)),
+                        selected = selected,
+                        modifier = Modifier.weight(1f),
+                        onClick = { selectedIndex = index }
+                    )
+                }
+            }
+            DayNavButton(">") {
+                if (selectedIndex == 6) {
+                    weekOffset += 1
+                    selectedIndex = 0
+                } else {
+                    selectedIndex += 1
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            listOf("TODOS", "PRIORIDADE", "CONCLUIDAS").forEach { filter ->
+                WeeklyFilterChip(
+                    text = filter,
+                    selected = selectedFilter == filter,
+                    onClick = { selectedFilter = filter }
+                )
+            }
+        }
+
+        if (filteredCards.isEmpty()) {
+            EmptyStateCard(
+                title = "Nada marcado para este dia",
+                subtitle = "Use as setas para navegar entre os dias ou registre uma sessao de estudo."
+            )
+        } else {
+            filteredCards.forEach { item -> WeeklyTaskCard(item) }
+        }
+
+        BottomBackButton(onBack = onBack)
+    }
+}
+
+private data class WeeklyTaskCardData(
+    val eyebrow: String,
+    val title: String,
+    val time: String,
+    val status: String,
+    val accent: Color,
+    val priority: Boolean,
+    val completed: Boolean
+)
+
+@Composable
+private fun WeeklyDayChip(month: String, day: String, name: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Card(
+        modifier = modifier
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = if (selected) LearnerPrimary else Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 3.dp else 1.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 9.dp, horizontal = 2.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(month, color = if (selected) Color.White.copy(alpha = .85f) else LearnerMutedText, fontSize = 9.sp, maxLines = 1)
+            Text(day, color = if (selected) Color.White else Color(0xFF111827), fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            Text(name, color = if (selected) Color.White.copy(alpha = .9f) else LearnerMutedText, fontSize = 9.sp, maxLines = 1)
+        }
+    }
+}
+
+private fun monthPt(month: Int): String = listOf(
+    "Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"
+)[month.coerceIn(0, 11)]
+
+private fun dayNamePt(dayOfWeek: Int): String = when (dayOfWeek) {
+    Calendar.MONDAY -> "Seg"
+    Calendar.TUESDAY -> "Ter"
+    Calendar.WEDNESDAY -> "Qua"
+    Calendar.THURSDAY -> "Qui"
+    Calendar.FRIDAY -> "Sex"
+    Calendar.SATURDAY -> "Sab"
+    Calendar.SUNDAY -> "Dom"
+    else -> ""
+}
+
+@Composable
+private fun DayNavButton(text: String, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(24.dp)
+            .clip(CircleShape)
+            .background(Color.White)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = LearnerPrimary, fontSize = 12.sp, fontWeight = FontWeight.Black)
+    }
+}
+
+@Composable
+private fun WeeklyFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) LearnerPrimary else Color(0xFFEDEBFA))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 22.dp, vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = if (selected) Color.White else LearnerPrimary, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun WeeklyTaskCard(item: WeeklyTaskCardData) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(item.eyebrow, color = LearnerMutedText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                Text(item.title, color = Color(0xFF111827), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(item.time, color = item.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(99.dp))
+                    .background(item.accent.copy(alpha = .14f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(item.status, color = item.accent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+        }
     }
 }
 
@@ -860,18 +1388,17 @@ fun NavGlyph(index: Int, color: Color) {
                 drawLine(color, Offset(size.width * 0.62f, size.height * 0.38f), Offset(size.width * 0.82f, size.height * 0.18f), strokeWidth = 3.2f)
             }
             5 -> {
-                drawArc(
+                drawRoundRect(
                     color = color,
-                    startAngle = 210f,
-                    sweepAngle = 120f,
-                    useCenter = false,
-                    topLeft = Offset(size.width * 0.24f, size.height * 0.18f),
-                    size = Size(size.width * 0.52f, size.height * 0.52f),
+                    topLeft = Offset(size.width * 0.12f, size.height * 0.32f),
+                    size = Size(size.width * 0.76f, size.height * 0.42f),
+                    cornerRadius = CornerRadius(9f, 9f),
                     style = stroke
                 )
-                drawLine(color, Offset(size.width * 0.28f, size.height * 0.2f), Offset(size.width * 0.28f, size.height * 0.38f), strokeWidth = 3.2f)
-                drawLine(color, Offset(size.width * 0.28f, size.height * 0.2f), Offset(size.width * 0.46f, size.height * 0.2f), strokeWidth = 3.2f)
-                drawLine(color, Offset(size.width * 0.3f, size.height * 0.78f), Offset(size.width * 0.7f, size.height * 0.78f), strokeWidth = 3.2f)
+                drawLine(color, Offset(size.width * 0.29f, size.height * 0.53f), Offset(size.width * 0.49f, size.height * 0.53f), strokeWidth = 3.2f)
+                drawLine(color, Offset(size.width * 0.39f, size.height * 0.43f), Offset(size.width * 0.39f, size.height * 0.63f), strokeWidth = 3.2f)
+                drawCircle(color, size.minDimension * 0.055f, Offset(size.width * 0.68f, size.height * 0.48f))
+                drawCircle(color, size.minDimension * 0.055f, Offset(size.width * 0.77f, size.height * 0.58f))
             }
             else -> {
                 drawRoundRect(
@@ -908,6 +1435,7 @@ fun HelpScreen(onBack: () -> Unit) {
             subtitle = "Sessoes concluidas alimentam seu historico, metas e missoes. Quando uma missao estiver completa, voce pode resgatar moedas e acompanhar sua evolucao ao longo da semana.",
             accent = LearnerCoral
         )
+        BottomBackButton(onBack = onBack)
     }
 }
 
@@ -931,6 +1459,7 @@ fun LearningPathScreen(title: String, onBack: () -> Unit, onStartFocus: () -> Un
                 Text("Iniciar sessao de foco")
             }
         }
+        BottomBackButton(onBack = onBack)
     }
 }
 

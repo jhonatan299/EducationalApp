@@ -99,6 +99,7 @@ fun NotificationsScreen(
                 )
             }
         }
+        BottomBackButton(onBack = onBack)
     }
 }
 

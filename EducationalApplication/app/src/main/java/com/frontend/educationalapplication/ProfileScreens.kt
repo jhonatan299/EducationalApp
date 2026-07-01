@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -21,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +36,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.frontend.educationalapplication.network.AuthResponse
 import com.frontend.educationalapplication.network.EducationalApi
@@ -51,6 +54,8 @@ fun ProfileScreen(
     user: AuthResponse,
     reviews: List<ReviewReminderResponse>,
     onUserUpdated: (AuthResponse) -> Unit,
+    onChangePassword: () -> Unit,
+    onLogout: () -> Unit,
     onBack: () -> Unit
 ) {
     var name by remember(user.name) { mutableStateOf(user.name) }
@@ -119,6 +124,14 @@ fun ProfileScreen(
         }
         status?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = LearnerMutedText) }
 
+        ProfileSectionTitle("Seguranca")
+        ProfileActionRow(
+            title = "Alterar senha",
+            subtitle = "Atualize sua senha com confirmacao em duas etapas",
+            accent = LearnerPrimary,
+            onClick = onChangePassword
+        )
+
         ProfileSectionTitle("Preferencias")
         ProfileToggleRow(
             title = "Lembretes de foco",
@@ -145,23 +158,26 @@ fun ProfileScreen(
                 )
             }
         }
+
+        ProfileSectionTitle("Sessao")
+        ProfileActionRow(
+            title = "Sair da conta",
+            subtitle = "Voltar para a tela de entrada do app",
+            accent = LearnerCoral,
+            onClick = onLogout
+        )
+        BottomBackButton(onBack = onBack)
     }
 }
 
 @Composable
 private fun ProfileHeader(onBack: () -> Unit) {
-    Row(
+    Text(
+        text = "Perfil e configuracoes",
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        TextButton(onClick = onBack) { Text("Voltar", color = LearnerPrimary, fontWeight = FontWeight.Bold) }
-        Text(
-            text = "Perfil e configuracoes",
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
-    }
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.Bold
+    )
 }
 
 @Composable
@@ -198,6 +214,149 @@ private fun ProfileToggleRow(
 }
 
 @Composable
+private fun ProfileActionRow(
+    title: String,
+    subtitle: String,
+    accent: Color,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .background(accent.copy(alpha = .16f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(">", color = accent, fontWeight = FontWeight.Black)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = LearnerMutedText)
+            }
+        }
+    }
+}
+
+@Composable
+fun ChangePasswordScreen(
+    onBack: () -> Unit
+) {
+    var currentPassword by remember { mutableStateOf("") }
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<String?>(null) }
+
+    val canSave = currentPassword.isNotBlank() &&
+        newPassword.length >= 6 &&
+        confirmPassword.isNotBlank() &&
+        newPassword == confirmPassword
+
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(
+            text = "Alterar senha",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(58.dp)
+                        .background(LearnerPrimary, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LockGlyph(color = Color.White)
+                }
+                Text("Configure uma nova senha", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black)
+                Text(
+                    "Digite a senha atual e confirme a nova senha duas vezes para evitar erro de digitacao.",
+                    color = LearnerMutedText,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
+
+        OutlinedTextField(
+            value = currentPassword,
+            onValueChange = {
+                currentPassword = it
+                message = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Senha atual") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+        OutlinedTextField(
+            value = newPassword,
+            onValueChange = {
+                newPassword = it
+                message = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Nova senha") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        )
+        OutlinedTextField(
+            value = confirmPassword,
+            onValueChange = {
+                confirmPassword = it
+                message = null
+            },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Repetir nova senha") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            isError = confirmPassword.isNotBlank() && newPassword != confirmPassword,
+            supportingText = {
+                when {
+                    confirmPassword.isNotBlank() && newPassword != confirmPassword -> Text("As senhas nao coincidem.")
+                    newPassword.isNotBlank() && newPassword.length < 6 -> Text("Use pelo menos 6 caracteres.")
+                }
+            }
+        )
+
+        message?.let { Text(it, color = LearnerMutedText, style = MaterialTheme.typography.bodyMedium) }
+
+        Button(
+            onClick = {
+                message = "Senha atualizada nesta demo. Quando o backend tiver o endpoint, conectamos aqui."
+            },
+            enabled = canSave,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Salvar nova senha")
+        }
+        BottomBackButton(onBack = onBack, label = "Cancelar")
+        Spacer(Modifier.height(8.dp))
+    }
+}
+
+@Composable
 private fun ProfileEmptyNotification() {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -209,6 +368,33 @@ private fun ProfileEmptyNotification() {
             modifier = Modifier.padding(16.dp),
             style = MaterialTheme.typography.bodyMedium,
             color = LearnerMutedText
+        )
+    }
+}
+
+@Composable
+private fun LockGlyph(color: Color) {
+    val keyholeColor = MaterialTheme.colorScheme.primaryContainer
+    Canvas(modifier = Modifier.size(26.dp)) {
+        drawRoundRect(
+            color = color,
+            topLeft = Offset(size.width * .24f, size.height * .46f),
+            size = Size(size.width * .52f, size.height * .38f),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(6f, 6f)
+        )
+        drawArc(
+            color = color,
+            startAngle = 200f,
+            sweepAngle = 140f,
+            useCenter = false,
+            topLeft = Offset(size.width * .28f, size.height * .16f),
+            size = Size(size.width * .44f, size.height * .48f),
+            style = Stroke(width = 3.5f)
+        )
+        drawCircle(
+            color = keyholeColor,
+            radius = size.minDimension * .045f,
+            center = Offset(size.width * .5f, size.height * .64f)
         )
     }
 }

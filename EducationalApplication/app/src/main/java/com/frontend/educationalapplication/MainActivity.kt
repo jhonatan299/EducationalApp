@@ -39,10 +39,14 @@ fun StudyApp() {
     // CoroutineScope lets button clicks run network calls without freezing the UI thread.
     val scope = rememberCoroutineScope()
     // mutableStateOf is like a variable that also tells Compose: "redraw when I change".
-    var user by remember { mutableStateOf<AuthResponse?>(null) }
+    var user by remember {
+        mutableStateOf<AuthResponse?>(
+            if (BuildConfig.DEMO_MODE) AuthResponse(0L, "Professora", "demo@local", 120) else null
+        )
+    }
     var error by remember { mutableStateOf<String?>(null) }
     var authScreen by remember { mutableStateOf(AuthScreen.Onboarding) }
-    var isGuest by remember { mutableStateOf(false) }
+    var isGuest by remember { mutableStateOf(BuildConfig.DEMO_MODE) }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         // If no user is logged in, show LoginScreen. After login, show HomeScreen.
@@ -104,7 +108,13 @@ fun StudyApp() {
                 api = api,
                 user = user!!,
                 isGuest = isGuest,
-                onUserUpdated = { user = it }
+                onUserUpdated = { user = it },
+                onLogout = {
+                    user = null
+                    isGuest = false
+                    error = null
+                    authScreen = AuthScreen.Onboarding
+                }
             )
         }
     }

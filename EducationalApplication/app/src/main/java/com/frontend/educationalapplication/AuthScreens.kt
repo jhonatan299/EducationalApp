@@ -280,7 +280,7 @@ fun RegisterScreen(
         PrimaryAuthButton("Criar conta", onClick = { onRegister(name, email, password) })
         error?.let {
             Spacer(Modifier.height(12.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            ErrorStateCard(error = it.toFriendlyError())
         }
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
@@ -333,7 +333,7 @@ fun LoginScreen(
         }
         error?.let {
             Spacer(Modifier.height(12.dp))
-            Text(it, color = MaterialTheme.colorScheme.error)
+            ErrorStateCard(error = it.toFriendlyError())
         }
         Spacer(Modifier.height(16.dp))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {

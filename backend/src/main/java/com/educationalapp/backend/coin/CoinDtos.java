@@ -1,5 +1,7 @@
 package com.educationalapp.backend.coin;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
 import java.time.LocalDateTime;
 
 public final class CoinDtos {
@@ -19,5 +21,11 @@ public final class CoinDtos {
                     transaction.getCreatedAt()
             );
         }
+    }
+
+    public record RewardCoinsRequest(
+            @Positive int amount,
+            @NotBlank String reason
+    ) {
     }
 }

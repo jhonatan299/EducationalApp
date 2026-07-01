@@ -20,7 +20,9 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         val apiBaseUrl = providers.gradleProperty("apiBaseUrl").getOrElse("http://10.0.2.2:8080")
+        val demoMode = providers.gradleProperty("demoMode").getOrElse("false")
         buildConfigField("String", "API_BASE_URL", "\"$apiBaseUrl\"")
+        buildConfigField("Boolean", "DEMO_MODE", demoMode)
     }
 
     buildTypes {

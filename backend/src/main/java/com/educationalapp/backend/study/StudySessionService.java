@@ -39,28 +39,38 @@ public class StudySessionService {
         LocalDateTime startedAt = endedAt.minusMinutes(request.durationMinutes());
         return createSession(request.userId(), request.subject(), request.durationMinutes(), SessionSource.MANUAL,
                 startedAt, endedAt, request.studyType(), request.content(), request.objective(), request.notes(),
-                request.learned(), request.difficulties(), request.nextAction(), request.focusRating());
+                request.learned(), request.difficulties(), request.nextAction(), request.focusRating(),
+                request.exerciseCount(), request.correctAnswers());
     }
 
     @Transactional
     public StudySession createPomodoroSession(Long userId, String subject, int minutes,
                                               LocalDateTime startedAt, LocalDateTime endedAt, String notes) {
         return createSession(userId, subject, minutes, SessionSource.POMODORO, startedAt, endedAt,
-                StudyType.REVIEW, null, "Concluir um Pomodoro com foco", notes, null, null, null, null);
+                StudyType.REVIEW, null, "Concluir um Pomodoro com foco", notes, null, null, null, null, null, null);
     }
 
     public List<StudySession> listForUser(Long userId) {
         return studySessionRepository.findByUserIdOrderByStartedAtDesc(userId);
     }
 
+    @Transactional
+    public void delete(Long sessionId) {
+        StudySession session = studySessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("Relatorio de estudo nao encontrado: " + sessionId));
+        reviewReminderRepository.deleteByStudySessionId(session.getId());
+        studySessionRepository.delete(session);
+    }
+
     private StudySession createSession(Long userId, String subject, int minutes, SessionSource source,
                                        LocalDateTime startedAt, LocalDateTime endedAt, StudyType studyType,
                                        String content, String objective, String notes, String learned,
-                                       String difficulties, String nextAction, Integer focusRating) {
+                                       String difficulties, String nextAction, Integer focusRating,
+                                       Integer exerciseCount, Integer correctAnswers) {
         userService.getUser(userId);
         StudySession session = studySessionRepository.save(
                 new StudySession(userId, subject, minutes, source, startedAt, endedAt, content, objective,
-                        notes, learned, difficulties, nextAction, focusRating, studyType)
+                        notes, learned, difficulties, nextAction, focusRating, studyType, exerciseCount, correctAnswers)
         );
         applyProgress(userId, subject, minutes);
         createReviewReminder(session);
