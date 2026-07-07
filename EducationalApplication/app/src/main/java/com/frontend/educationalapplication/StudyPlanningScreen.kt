@@ -46,6 +46,7 @@ import org.json.JSONObject
 enum class SubjectPriority { LOW, MEDIUM, HIGH }
 enum class StudyDifficulty { EASY, MEDIUM, HARD }
 enum class TopicStatus { NOT_STARTED, IN_PROGRESS, STUDIED, NEEDS_REVIEW, MASTERED }
+enum class StudyTaskStatus { PENDING, COMPLETED }
 
 data class StudySubjectPlan(
     val id: Long,
@@ -67,13 +68,23 @@ data class StudyTopicPlan(
     val difficulty: StudyDifficulty?,
     val estimatedMinutes: String,
     val note: String,
-    val createdAt: Long
+    val createdAt: Long,
+    val tasks: List<StudyTaskPlan> = emptyList()
+)
+
+data class StudyTaskPlan(
+    val id: Long,
+    val title: String,
+    val studyType: String = "Leitura",
+    val status: StudyTaskStatus = StudyTaskStatus.PENDING,
+    val orderIndex: Int = 0,
+    val completedAt: Long? = null
 )
 
 private enum class PlanningMode { LIST, SUBJECT_FORM, DETAILS, TOPIC_FORM }
 
 @Composable
-fun StudyPlanningScreen(userId: Long) {
+fun StudyPlanningScreen(userId: Long, onStartStudy: () -> Unit = {}) {
     val context = LocalContext.current
     var subjects by remember(userId) { mutableStateOf(loadStudyPlanningSubjects(context, userId)) }
     var mode by remember { mutableStateOf(PlanningMode.LIST) }
@@ -157,6 +168,21 @@ fun StudyPlanningScreen(userId: Long) {
                                     subject.copy(topics = subject.topics.filterNot { it.id == topic.id })
                                 } else subject
                             })
+                        },
+                        onStartTask = { topic, task ->
+                            savePomodoroPrefill(
+                                context,
+                                PomodoroPrefill(
+                                    subjectId = selectedSubject.id,
+                                    topicId = topic.id,
+                                    taskId = task.id,
+                                    subject = selectedSubject.name,
+                                    topic = topic.name,
+                                    studyType = task.studyType,
+                                    taskTitle = task.title
+                                )
+                            )
+                            onStartStudy()
                         }
                     )
                 }
@@ -176,7 +202,7 @@ fun StudyPlanningScreen(userId: Long) {
                                     val topics = if (subject.topics.any { it.id == topic.id }) {
                                         subject.topics.map { if (it.id == topic.id) topic else it }
                                     } else {
-                                        subject.topics + topic
+                                        subject.topics + topic.copy(tasks = defaultStudyTasks())
                                     }
                                     subject.copy(topics = topics)
                                 } else subject
@@ -193,7 +219,7 @@ fun StudyPlanningScreen(userId: Long) {
 
 @Composable
 private fun StudyPlanningList(subjects: List<StudySubjectPlan>, onCreate: () -> Unit, onOpen: (StudySubjectPlan) -> Unit) {
-    Text("Organize matérias, tópicos e prazos para estudar melhor.", color = LearnerMutedText)
+    Text("Organize matérias, temas e prazos para estudar melhor.", color = LearnerMutedText)
     Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("+ Nova matéria") }
     if (subjects.isEmpty()) {
         EmptyPlanningCard(
@@ -225,7 +251,7 @@ private fun StudySubjectCard(subject: StudySubjectPlan, onClick: () -> Unit) {
             }
             if (subject.examDate.isNotBlank()) Text("Prova/prazo: ${subject.examDate}", color = LearnerMutedText)
             if (subject.estimatedHours.isNotBlank()) Text("Horas estimadas: ${subject.estimatedHours}h", color = LearnerMutedText)
-            Text("Tópicos: $done/$total concluídos", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+            Text("Temas: $done/$total concluídos", color = LearnerMutedText, fontWeight = FontWeight.Bold)
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
@@ -245,34 +271,42 @@ private fun StudySubjectDetails(
     onBackToList: () -> Unit,
     onStatus: (StudyTopicPlan, TopicStatus) -> Unit,
     onEditTopic: (StudyTopicPlan) -> Unit,
-    onDeleteTopic: (StudyTopicPlan) -> Unit
+    onDeleteTopic: (StudyTopicPlan) -> Unit,
+    onStartTask: (StudyTopicPlan, StudyTaskPlan) -> Unit
 ) {
     StudySubjectCard(subject = subject, onClick = {})
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = onAddTopic, modifier = Modifier.weight(1f)) { Text("Adicionar tópico") }
+        Button(onClick = onAddTopic, modifier = Modifier.weight(1f)) { Text("Adicionar tema") }
         Button(onClick = onEditSubject, modifier = Modifier.weight(1f)) { Text("Editar matéria") }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         TextButton(onClick = onBackToList, modifier = Modifier.weight(1f)) { Text("Ver lista") }
         TextButton(onClick = onDeleteSubject, modifier = Modifier.weight(1f)) { Text("Excluir matéria", color = LearnerCoral) }
     }
-    Text("Tópicos", fontWeight = FontWeight.Black, fontSize = 20.sp)
+    Text("Temas", fontWeight = FontWeight.Black, fontSize = 20.sp)
     if (subject.topics.isEmpty()) {
-        EmptyPlanningCard("Nenhum tópico cadastrado", "Adicione tópicos para acompanhar o progresso dessa matéria.", "Adicionar tópico", onAddTopic)
+        EmptyPlanningCard("Nenhum tema cadastrado", "Adicione temas para acompanhar o progresso dessa matéria.", "Adicionar tema", onAddTopic)
     } else {
         subject.topics.forEach {
             StudyTopicCard(
                 topic = it,
                 onStatus = { status -> onStatus(it, status) },
                 onEdit = { onEditTopic(it) },
-                onDelete = { onDeleteTopic(it) }
+                onDelete = { onDeleteTopic(it) },
+                onStartTask = { task -> onStartTask(it, task) }
             )
         }
     }
 }
 
 @Composable
-private fun StudyTopicCard(topic: StudyTopicPlan, onStatus: (TopicStatus) -> Unit, onEdit: () -> Unit, onDelete: () -> Unit) {
+private fun StudyTopicCard(
+    topic: StudyTopicPlan,
+    onStatus: (TopicStatus) -> Unit,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit,
+    onStartTask: (StudyTaskPlan) -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
@@ -284,6 +318,23 @@ private fun StudyTopicCard(topic: StudyTopicPlan, onStatus: (TopicStatus) -> Uni
             topic.difficulty?.let { PlanningPill("Dificuldade: ${it.label()}", LearnerCoral) }
             if (topic.estimatedMinutes.isNotBlank()) Text("Tempo estimado: ${topic.estimatedMinutes} min", color = LearnerMutedText)
             if (topic.note.isNotBlank()) Text(topic.note, color = LearnerMutedText)
+            Text("Checklist de estudo", fontWeight = FontWeight.Black)
+            val tasks = topic.tasks.ifEmpty { defaultStudyTasks() }
+            tasks.sortedBy { it.orderIndex }.forEach { task ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint.copy(alpha = .55f))
+                ) {
+                    Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(task.title, fontWeight = FontWeight.Bold)
+                        Text(task.studyType, color = LearnerMutedText, fontSize = 12.sp)
+                        Button(onClick = { onStartTask(task) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Iniciar estudo")
+                        }
+                    }
+                }
+            }
             listOf(TopicStatus.IN_PROGRESS, TopicStatus.STUDIED, TopicStatus.NEEDS_REVIEW, TopicStatus.MASTERED).chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     row.forEach { status ->
@@ -354,8 +405,8 @@ private fun StudyTopicForm(subjectId: Long, initial: StudyTopicPlan?, onCancel: 
     var note by remember(initial?.id) { mutableStateOf(initial?.note.orEmpty()) }
     var error by remember { mutableStateOf<String?>(null) }
 
-    PlanningFormCard(if (initial == null) "Novo tópico" else "Editar tópico") {
-        OutlinedTextField(value = name, onValueChange = { name = it; error = null }, label = { Text("Nome do tópico") }, modifier = Modifier.fillMaxWidth())
+    PlanningFormCard(if (initial == null) "Novo tema" else "Editar tema") {
+        OutlinedTextField(value = name, onValueChange = { name = it; error = null }, label = { Text("Nome do tema") }, modifier = Modifier.fillMaxWidth())
         PlanningSelector("Status inicial", TopicStatus.entries, status, { it.label() }) { status = it }
         PlanningSelector("Dificuldade", StudyDifficulty.entries, difficulty, { it.label() }) { difficulty = it }
         OutlinedTextField(value = estimatedMinutes, onValueChange = { estimatedMinutes = it }, label = { Text("Tempo estimado em minutos (opcional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
@@ -365,7 +416,7 @@ private fun StudyTopicForm(subjectId: Long, initial: StudyTopicPlan?, onCancel: 
             Button(
                 onClick = {
                     if (name.isBlank()) {
-                        error = "Nome do tópico é obrigatório para salvar."
+                        error = "Nome do tema é obrigatório para salvar."
                     } else {
                         onSave(
                             StudyTopicPlan(
@@ -376,7 +427,8 @@ private fun StudyTopicForm(subjectId: Long, initial: StudyTopicPlan?, onCancel: 
                                 difficulty = difficulty,
                                 estimatedMinutes = estimatedMinutes.trim(),
                                 note = note.trim(),
-                                createdAt = initial?.createdAt ?: System.currentTimeMillis()
+                                createdAt = initial?.createdAt ?: System.currentTimeMillis(),
+                                tasks = initial?.tasks.orEmpty()
                             )
                         )
                     }
@@ -465,17 +517,72 @@ private fun TopicStatus.label() = when (this) {
 }
 
 fun loadStudyPlanningSubjects(context: Context, userId: Long): List<StudySubjectPlan> {
-    val raw = context.getSharedPreferences("study_planning", Context.MODE_PRIVATE).getString("subjects_$userId", null) ?: return emptyList()
+    val raw = context.getSharedPreferences("study_planning", Context.MODE_PRIVATE).getString("subjects_$userId", null)
+        ?: return if (BuildConfig.DEMO_MODE || userId == 1001L) demoStudyPlanningSubjects() else emptyList()
     return runCatching {
         val array = JSONArray(raw)
         List(array.length()) { index -> array.getJSONObject(index).toStudySubjectPlan() }
-    }.getOrDefault(emptyList())
+    }.getOrDefault(if (BuildConfig.DEMO_MODE || userId == 1001L) demoStudyPlanningSubjects() else emptyList())
 }
 
 private fun saveStudyPlanningSubjects(context: Context, userId: Long, subjects: List<StudySubjectPlan>) {
     val array = JSONArray()
     subjects.forEach { array.put(it.toJson()) }
     context.getSharedPreferences("study_planning", Context.MODE_PRIVATE).edit().putString("subjects_$userId", array.toString()).apply()
+}
+
+fun ensureStudyPlanningSubject(context: Context, userId: Long, subjectName: String): Long? {
+    val cleanName = subjectName.trim()
+    if (cleanName.isBlank()) return null
+    val subjects = loadStudyPlanningSubjects(context, userId)
+    val existing = subjects.firstOrNull { it.name.equals(cleanName, ignoreCase = true) }
+    if (existing != null) return existing.id
+
+    val now = System.currentTimeMillis()
+    val created = StudySubjectPlan(
+        id = now,
+        name = cleanName,
+        priority = SubjectPriority.MEDIUM,
+        difficulty = StudyDifficulty.MEDIUM,
+        examDate = "",
+        estimatedHours = "",
+        weeklyGoalMinutes = "",
+        createdAt = now,
+        topics = emptyList()
+    )
+    saveStudyPlanningSubjects(context, userId, subjects + created)
+    return created.id
+}
+
+fun ensureStudyPlanningTopic(context: Context, userId: Long, subjectName: String, topicName: String): Long? {
+    val cleanSubject = subjectName.trim()
+    val cleanTopic = topicName.trim()
+    if (cleanSubject.isBlank() || cleanTopic.isBlank()) return null
+
+    val subjects = loadStudyPlanningSubjects(context, userId)
+    val subject = subjects.firstOrNull { it.name.equals(cleanSubject, ignoreCase = true) }
+    val subjectId = subject?.id ?: ensureStudyPlanningSubject(context, userId, cleanSubject) ?: return null
+    val refreshedSubjects = loadStudyPlanningSubjects(context, userId)
+    val next = refreshedSubjects.map { current ->
+        if (current.id != subjectId) return@map current
+        if (current.topics.any { it.name.equals(cleanTopic, ignoreCase = true) }) return@map current
+        val now = System.currentTimeMillis()
+        current.copy(
+            topics = current.topics + StudyTopicPlan(
+                id = now,
+                subjectId = subjectId,
+                name = cleanTopic,
+                status = TopicStatus.NOT_STARTED,
+                difficulty = null,
+                estimatedMinutes = "",
+                note = "",
+                createdAt = now,
+                tasks = emptyList()
+            )
+        )
+    }
+    saveStudyPlanningSubjects(context, userId, next)
+    return subjectId
 }
 
 private fun StudySubjectPlan.toJson() = JSONObject()
@@ -498,6 +605,15 @@ private fun StudyTopicPlan.toJson() = JSONObject()
     .put("estimatedMinutes", estimatedMinutes)
     .put("note", note)
     .put("createdAt", createdAt)
+    .put("tasks", JSONArray().also { array -> tasks.forEach { array.put(it.toJson()) } })
+
+private fun StudyTaskPlan.toJson() = JSONObject()
+    .put("id", id)
+    .put("title", title)
+    .put("studyType", studyType)
+    .put("status", status.name)
+    .put("orderIndex", orderIndex)
+    .put("completedAt", completedAt)
 
 private fun JSONObject.toStudySubjectPlan(): StudySubjectPlan {
     val topicsArray = optJSONArray("topics") ?: JSONArray()
@@ -516,6 +632,7 @@ private fun JSONObject.toStudySubjectPlan(): StudySubjectPlan {
 
 private fun JSONObject.toStudyTopicPlan(): StudyTopicPlan {
     val difficultyName = optString("difficulty")
+    val tasksArray = optJSONArray("tasks")
     return StudyTopicPlan(
         id = optLong("id"),
         subjectId = optLong("subjectId"),
@@ -524,9 +641,52 @@ private fun JSONObject.toStudyTopicPlan(): StudyTopicPlan {
         difficulty = if (difficultyName.isBlank()) null else enumValueOrDefault(difficultyName, StudyDifficulty.MEDIUM),
         estimatedMinutes = optString("estimatedMinutes"),
         note = optString("note"),
-        createdAt = optLong("createdAt")
+        createdAt = optLong("createdAt"),
+        tasks = if (tasksArray == null) defaultStudyTasks() else List(tasksArray.length()) { index -> tasksArray.getJSONObject(index).toStudyTaskPlan() }
     )
 }
+
+private fun JSONObject.toStudyTaskPlan(): StudyTaskPlan =
+    StudyTaskPlan(
+        id = optLong("id"),
+        title = optString("title"),
+        studyType = optString("studyType", "Leitura"),
+        status = enumValueOrDefault(optString("status"), StudyTaskStatus.PENDING),
+        orderIndex = optInt("orderIndex"),
+        completedAt = if (has("completedAt") && !isNull("completedAt")) optLong("completedAt") else null
+    )
+
+fun markStudyTaskCompleted(context: Context, userId: Long, subjectId: Long, topicId: Long, taskId: Long) {
+    if (subjectId == 0L || topicId == 0L || taskId == 0L) return
+    val updated = loadStudyPlanningSubjects(context, userId).map { subject ->
+        if (subject.id != subjectId) subject else subject.copy(
+            topics = subject.topics.map { topic ->
+                if (topic.id != topicId) topic else topic.copy(
+                    tasks = topic.tasks.map { task ->
+                        if (task.id == taskId) task.copy(status = StudyTaskStatus.COMPLETED, completedAt = System.currentTimeMillis()) else task
+                    }
+                )
+            }
+        )
+    }
+    saveStudyPlanningSubjects(context, userId, updated)
+}
+
+private fun defaultStudyTasks(): List<StudyTaskPlan> =
+    listOf(
+        "Ler ou assistir o conteúdo" to "Leitura",
+        "Fazer exercícios" to "Exercício",
+        "Corrigir erros" to "Exercício",
+        "Anotar dúvidas" to "Resumo",
+        "Fazer revisão rápida" to "Revisão"
+    ).mapIndexed { index, item ->
+        StudyTaskPlan(
+            id = System.currentTimeMillis() + index,
+            title = item.first,
+            studyType = item.second,
+            orderIndex = index
+        )
+    }
 
 private inline fun <reified T : Enum<T>> enumValueOrDefault(name: String, default: T): T =
     runCatching { enumValueOf<T>(name) }.getOrDefault(default)

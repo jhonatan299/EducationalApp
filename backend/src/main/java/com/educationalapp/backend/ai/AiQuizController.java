@@ -4,6 +4,8 @@ import com.educationalapp.backend.ai.AiQuizDtos.GenerateQuizRequest;
 import com.educationalapp.backend.ai.AiQuizDtos.GeneratedQuizResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.QuestionListRequest;
 import com.educationalapp.backend.ai.AiQuizDtos.QuestionListResponse;
+import com.educationalapp.backend.ai.AiQuizDtos.RevisionRoadmapRequest;
+import com.educationalapp.backend.ai.AiQuizDtos.RevisionRoadmapResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.SaveQuestionsRequest;
 import com.educationalapp.backend.ai.AiQuizDtos.SavedQuestionResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.UpdateQuestionRequest;
@@ -31,6 +33,11 @@ public class AiQuizController {
     @PostMapping("/quiz-from-text")
     public GeneratedQuizResponse generateQuizFromText(@Valid @RequestBody GenerateQuizRequest request) {
         return aiQuizService.generateQuizFromText(request);
+    }
+
+    @PostMapping("/revision-roadmap")
+    public RevisionRoadmapResponse generateRevisionRoadmap(@Valid @RequestBody RevisionRoadmapRequest request) {
+        return aiQuizService.generateRevisionRoadmap(request);
     }
 
     @PostMapping("/questions")

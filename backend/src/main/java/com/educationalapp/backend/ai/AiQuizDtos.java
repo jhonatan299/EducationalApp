@@ -80,4 +80,45 @@ public class AiQuizDtos {
             List<GeneratedQuestion> questions
     ) {
     }
+
+    public record RevisionRoadmapRequest(
+            @NotBlank String baseType,
+            @NotBlank String subjectName,
+            String topicName,
+            boolean planWholeSubject,
+            Integer durationDays,
+            Integer dailyAvailableMinutes,
+            String preferredTime,
+            String level,
+            String goal
+    ) {
+    }
+
+    public record RevisionRoadmapResponse(
+            List<StudyPlanOptionResponse> options
+    ) {
+    }
+
+    public record StudyPlanOptionResponse(
+            int optionNumber,
+            String title,
+            String description,
+            int estimatedTotalMinutes,
+            String difficulty,
+            List<String> suggestedTopics,
+            List<PlannedRevisionResponse> revisions
+    ) {
+    }
+
+    public record PlannedRevisionResponse(
+            String subjectName,
+            String topicName,
+            String date,
+            String time,
+            int durationMinutes,
+            String revisionType,
+            String description,
+            String priority
+    ) {
+    }
 }

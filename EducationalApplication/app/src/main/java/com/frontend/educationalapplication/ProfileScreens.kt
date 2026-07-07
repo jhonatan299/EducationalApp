@@ -31,6 +31,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -53,6 +54,8 @@ fun ProfileScreen(
     api: EducationalApi,
     user: AuthResponse,
     reviews: List<ReviewReminderResponse>,
+    blockOtherAppsDuringPomodoro: Boolean,
+    onBlockOtherAppsDuringPomodoroChanged: (Boolean) -> Unit,
     onUserUpdated: (AuthResponse) -> Unit,
     onChangePassword: () -> Unit,
     onLogout: () -> Unit,
@@ -64,6 +67,7 @@ fun ProfileScreen(
     var saving by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val pendingReviews = reviews.filter { !it.completed }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -135,7 +139,7 @@ fun ProfileScreen(
         ProfileSectionTitle("Preferencias")
         ProfileToggleRow(
             title = "Lembretes de foco",
-            subtitle = "Avisos para iniciar uma sessao de estudo",
+            subtitle = "Avisos para iniciar uma sessão de estudo",
             checked = focusReminders,
             onCheckedChange = { focusReminders = it }
         )
@@ -147,6 +151,18 @@ fun ProfileScreen(
         )
 
         ProfileSectionTitle("Notificacoes")
+        ProfileToggleRow(
+            title = "Bloquear notificações externas",
+            subtitle = "Usar Não perturbe durante o Pomodoro",
+            checked = blockOtherAppsDuringPomodoro,
+            onCheckedChange = { enabled ->
+                if (enabled && !hasDoNotDisturbAccess(context)) {
+                    openDoNotDisturbAccessSettings(context)
+                    status = "Autorize o acesso ao Não perturbe para bloquear notificações de outros apps."
+                }
+                onBlockOtherAppsDuringPomodoroChanged(enabled)
+            }
+        )
         if (pendingReviews.isEmpty()) {
             ProfileEmptyNotification()
         } else {

@@ -1,0 +1,243 @@
+LISTA DE FUNCIONALIDADES ATUAIS DO APP
+
+1. Acesso ao app
+- Login.
+- Cadastro.
+- Modo convidado / demo sem login.
+- Logout.
+- Alteração de senha.
+- Tela de perfil.
+- Tela de ajuda.
+- Tela de erro amigável para falhas de internet/servidor.
+
+2. Home
+- Tela inicial com resumo do app.
+- Card de progresso semanal.
+- Card de Pomodoro.
+- Caminhos de estudo.
+- Seção de sugestões/atalhos.
+- Menu inferior com:
+  - Home;
+  - Relatório;
+  - Calendário;
+  - Estatísticas;
+  - Metas;
+  - Jogos.
+
+3. Pomodoro
+- Timer de foco.
+- Configuração de tempo de foco e pausa.
+- Pausar/continuar.
+- Adicionar +5 minutos.
+- Concluir sessão.
+- Funciona offline/localmente.
+- Sincroniza depois quando possível.
+- Permite escolher opcionalmente:
+  - matéria;
+  - tópico/conteúdo;
+  - tipo de estudo.
+- Pode receber dados automaticamente a partir de uma tarefa da checklist.
+- Ao concluir, abre relatório leve:
+  - Difícil;
+  - Ok;
+  - Fácil;
+  - anotação rápida opcional.
+
+4. Planejamento de estudo
+- Criar matérias.
+- Editar matérias.
+- Excluir matérias.
+- Definir prioridade.
+- Definir dificuldade.
+- Definir data de prova/prazo.
+- Definir horas estimadas.
+- Definir meta semanal em minutos.
+- Criar tópicos dentro da matéria.
+- Editar tópicos.
+- Excluir tópicos.
+- Definir status do tópico:
+  - Não iniciado;
+  - Em andamento;
+  - Estudado;
+  - Precisa revisar;
+  - Dominado.
+- Definir dificuldade do tópico.
+- Definir tempo estimado do tópico.
+- Adicionar observação curta.
+
+5. Checklist de estudo
+- Checklist automática ao criar tópico.
+- Itens padrão:
+  - Ler ou assistir o conteúdo;
+  - Fazer exercícios;
+  - Corrigir erros;
+  - Anotar dúvidas;
+  - Fazer resumo;
+  - Fazer revisão rápida.
+- Marcar item como concluído.
+- Desmarcar item.
+- Excluir item.
+- Adicionar novo item.
+- Iniciar Pomodoro a partir de um item.
+
+6. Relatórios
+- Registrar sessão de estudo manual.
+- Campos do relatório:
+  - matéria;
+  - tópico/conteúdo;
+  - tipo de estudo;
+  - tempo estudado;
+  - quantidade de exercícios;
+  - quantidade de acertos;
+  - objetivo;
+  - anotações;
+  - o que aprendi;
+  - dificuldades;
+  - próxima ação;
+  - foco de 1 a 5.
+- Salvar sessão.
+- Histórico de sessões.
+- Eliminar relatório/sessão.
+- Filtros no histórico:
+  - matéria;
+  - tópico;
+  - tipo;
+  - período.
+- Agendamento de revisões ao salvar sessão.
+
+7. Revisões
+- Lista de revisões.
+- Criar revisão manual.
+- Marcar revisão como concluída.
+- Eliminar revisão.
+- Revisões geradas a partir de sessões.
+- Revisões ligadas à matéria/tópico quando informado.
+
+8. Calendário
+- Tela de calendário.
+- Visualização de dias.
+- Exibição de sessões/estudos por dia.
+- Base preparada para mostrar revisões e estudos vinculados.
+
+9. Estatísticas
+- Tela de estatísticas.
+- Progresso de estudo.
+- Tempo total estudado.
+- Gráficos/indicadores de estudo.
+- Ranking entre usuários.
+- Ranking semanal.
+- Ranking de todo o tempo.
+- Dados reais vindos do backend quando disponível.
+- Estado vazio quando não há dados.
+
+10. Metas e missões
+- Tela de metas.
+- Tela de missões.
+- Missões com progresso.
+- Resgate de recompensas.
+- Sistema de moedas.
+
+11. Moedas
+- Saldo de moedas.
+- Ganha moedas por estudo/missões.
+- Ganha moedas no Quiz Solo.
+- Backend registra transações de moedas.
+
+12. Jogos
+- Aba Jogos.
+- Menu de jogos.
+- Quiz Solo.
+- Gerador de perguntas com IA.
+- Banco de perguntas.
+- Quiz Poker.
+- Psych! Bluff Trivia.
+
+13. Quiz Solo
+- Jogo individual.
+- Rodada padrão de 10 perguntas.
+- 4 alternativas por pergunta.
+- Mostra acerto/erro.
+- Mostra resposta correta quando erra.
+- Avança pergunta por pergunta.
+- Tela final com:
+  - acertos;
+  - erros;
+  - porcentagem;
+  - moedas ganhas.
+- Regra de moedas:
+  - +5 moedas por acerto;
+  - +10 bônus se acertar tudo.
+- Usa perguntas do banco quando existem.
+- Usa perguntas temporárias se o banco estiver vazio.
+- Salva histórico local da rodada.
+
+14. Gerador de perguntas com IA
+- Gera perguntas a partir de texto.
+- Usa Gemini via backend.
+- Perguntas universais, sem classificar dificuldade.
+- Permite escolher quantidade de perguntas.
+- Depois de gerar, o usuário pode:
+  - salvar todas;
+  - salvar algumas;
+  - ignorar.
+- A IA apenas gera perguntas.
+- O usuário decide o que salvar e como organizar.
+
+15. Banco de perguntas
+- Lista perguntas salvas.
+- Busca por texto/tema.
+- Edita tema da pergunta.
+- Elimina pergunta.
+- Cria listas de perguntas.
+- Elimina listas.
+- Adiciona pergunta a uma lista.
+- Remove pergunta de uma lista.
+- Exemplos de listas:
+  - Perguntas difíceis;
+  - Para revisar;
+  - Prova de sexta;
+  - Para jogar com amigos.
+
+16. Quiz Poker
+- Protótipo visual de jogo entre amigos.
+- Telas de criação/entrada de mesa.
+- Lobby.
+- Mesa do jogo.
+- Tema visual de poker/trivia.
+- Ainda não possui multiplayer real completo.
+
+17. Psych! Bluff Trivia
+- Protótipo visual inspirado em jogo de blefe.
+- Tela inicial.
+- Lobby.
+- Escrita de respostas.
+- Votação.
+- Revelação.
+- Pontuação.
+- Ainda não possui multiplayer real completo.
+
+18. Offline / demo
+- Algumas telas funcionam sem internet.
+- Pomodoro funciona localmente.
+- Sessões offline podem ser salvas para sincronizar depois.
+- Modo demo sem login.
+- APK demo criada para apresentação.
+
+19. Backend
+- Autenticação.
+- Usuários.
+- Sessões de estudo.
+- Pomodoro.
+- Revisões.
+- Metas.
+- Missões.
+- Moedas.
+- Ranking.
+- IA para gerar perguntas.
+- Banco de perguntas.
+- Listas de perguntas.
+
+20. Material de apresentação
+- APK demo sem login.
+- Tutorial simples para professora.
+- Lista de funcionalidades atual.

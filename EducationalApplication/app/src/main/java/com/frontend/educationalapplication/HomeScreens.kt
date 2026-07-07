@@ -87,6 +87,8 @@ fun HomeScreen(
     api: EducationalApi,
     user: AuthResponse,
     isGuest: Boolean,
+    isInPictureInPictureMode: Boolean = false,
+    onEnterPictureInPicture: () -> Unit = {},
     onUserUpdated: (AuthResponse) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -94,6 +96,7 @@ fun HomeScreen(
     var selectedTab by remember { mutableIntStateOf(0) }
     var homeRoute by remember { mutableStateOf(HomeRoute.Main) }
     var selectedLearningPath by remember { mutableStateOf("Matematica aplicada") }
+    var reportInitialSection by remember { mutableStateOf<Int?>(null) }
 
     // These lists hold the data loaded from the Spring backend.
     // They start empty, then refresh() fills them.
@@ -107,11 +110,41 @@ fun HomeScreen(
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val pomodoroPlayerState = rememberPomodoroPlayerState()
+    var blockOtherAppsDuringPomodoro by remember {
+        mutableStateOf(isBlockOtherAppsDuringPomodoroEnabled(context))
+    }
+
+    PomodoroTicker(pomodoroPlayerState)
+    PomodoroDoNotDisturbEffect(
+        context = context,
+        enabled = blockOtherAppsDuringPomodoro,
+        pomodoroRunning = pomodoroPlayerState.running
+    )
+
+    LaunchedEffect(pomodoroPlayerState.showQuickReport) {
+        if (pomodoroPlayerState.showQuickReport) {
+            selectedTab = 0
+            homeRoute = HomeRoute.Pomodoro
+        }
+    }
+
+    if (isInPictureInPictureMode) {
+        PomodoroPictureInPictureContent(pomodoroPlayerState)
+        return
+    }
 
     fun refresh() {
         if (isGuest) {
+            val demo = demoScreenData(user.userId)
+            sessions = demo.sessions
+            goals = demo.goals
+            missions = demo.missions
+            reviews = demo.reviews
+            calendar = demo.calendar
+            progress = demo.progress
             loading = false
-            message = "Modo convidado: algumas funções precisam de login."
+            message = "Modo demo: dados de exemplo para apresenta??o."
             return
         }
         loading = true
@@ -138,7 +171,7 @@ fun HomeScreen(
                 calendar = data.calendar
                 progress = data.progress
                 cacheScreenData(context, user.userId, data)
-                message = if (it.second > 0) "${it.second} sessao offline sincronizada." else null
+                message = if (it.second > 0) "${it.second} sessão offline sincronizada." else null
                 loading = false
             },
             onError = {
@@ -177,7 +210,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .safeDrawingPadding()
-                .padding(horizontal = 20.dp, vertical = 18.dp)
+                .padding(20.dp)
         ) {
             AiQuizGeneratorScreen(api = api, onBack = { homeRoute = HomeRoute.Main })
         }
@@ -211,7 +244,7 @@ fun HomeScreen(
                 .safeDrawingPadding()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             RankingDashboard(api = api, userId = user.userId, onBack = { homeRoute = HomeRoute.Main })
         }
@@ -256,6 +289,7 @@ fun HomeScreen(
                 selectedIndex = selectedTab,
                 items = tabs,
                 onSelected = {
+                    if (it == 1) reportInitialSection = null
                     selectedTab = it
                     if (it == 0) {
                         homeRoute = HomeRoute.Main
@@ -264,9 +298,13 @@ fun HomeScreen(
             )
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 18.dp),
@@ -282,7 +320,7 @@ fun HomeScreen(
                 )
             }
             message?.let {
-                if (it.startsWith("Modo convidado") || it.startsWith("Offline:") || it.contains("sincronizada")) {
+                if (it.startsWith("Modo convidado") || it.startsWith("Modo demo") || it.startsWith("Offline:") || it.contains("sincronizada")) {
                     Text(it, color = LearnerMutedText)
                 } else {
                     ErrorStateCard(
@@ -307,9 +345,14 @@ fun HomeScreen(
                         reviews = reviews,
                         onOpenProfile = { homeRoute = HomeRoute.Profile },
                         onOpenHelp = { homeRoute = HomeRoute.Help },
-                        onOpenLearningPath = { path ->
-                            selectedLearningPath = path
-                            homeRoute = HomeRoute.LearningPath
+                        onOpenPriorityReview = {
+                            reportInitialSection = 1
+                            selectedTab = 1
+                            homeRoute = HomeRoute.Main
+                        },
+                        onOpenBestGoal = {
+                            selectedTab = 4
+                            homeRoute = HomeRoute.Main
                         },
                         onOpenWeeklyProgress = { homeRoute = HomeRoute.WeeklyProgress },
                         onOpenQuizPoker = { homeRoute = HomeRoute.QuizPoker }
@@ -317,13 +360,20 @@ fun HomeScreen(
                     HomeRoute.Pomodoro -> PomodoroDetailScreen(
                         api = api,
                         userId = user.userId,
+                        playerState = pomodoroPlayerState,
                         onBack = { homeRoute = HomeRoute.Main },
-                        onDone = { refresh() }
+                        onDone = { refresh() },
+                        onMinimize = onEnterPictureInPicture
                     )
                     HomeRoute.Profile -> ProfileScreen(
                         api = api,
                         user = user,
                         reviews = reviews,
+                        blockOtherAppsDuringPomodoro = blockOtherAppsDuringPomodoro,
+                        onBlockOtherAppsDuringPomodoroChanged = {
+                            blockOtherAppsDuringPomodoro = it
+                            setBlockOtherAppsDuringPomodoroEnabled(context, it)
+                        },
                         onUserUpdated = onUserUpdated,
                         onChangePassword = { homeRoute = HomeRoute.ChangePassword },
                         onLogout = onLogout,
@@ -344,10 +394,21 @@ fun HomeScreen(
                     HomeRoute.Ranking -> Unit
                     HomeRoute.ChangePassword -> Unit
                 }
-                1 -> ReportReviewsScreen(api, user.userId, sessions, reviews, onDone = { refresh() })
+                1 -> ReportReviewsScreen(
+                    api,
+                    user.userId,
+                    sessions,
+                    reviews,
+                    onDone = { refresh() },
+                    onStartStudy = {
+                        selectedTab = 0
+                        homeRoute = HomeRoute.Pomodoro
+                    },
+                    initialSection = reportInitialSection
+                )
                 2 -> CalendarScreen(calendar)
                 3 -> ProgressDashboard(progress, goals, onOpenRanking = { homeRoute = HomeRoute.Ranking })
-                4 -> GoalsMissionsDashboard(api, goals, missions, onClaimed = {
+                4 -> GoalsMissionsDashboard(api, user.userId, sessions, goals, missions, onClaimed = {
                     onUserUpdated(user.copy(coins = user.coins + it))
                     refresh()
                 })
@@ -359,6 +420,7 @@ fun HomeScreen(
                     onOpenQuestionBank = { homeRoute = HomeRoute.QuestionBank }
                 )
             }
+        }
         }
     }
 }
@@ -391,7 +453,7 @@ fun GamesHubScreen(
                 ) { Text("1P", fontSize = 24.sp, color = LearnerPrimary, fontWeight = FontWeight.Black) }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Quiz Solo", color = Color(0xFF111827), fontWeight = FontWeight.Black, fontSize = 20.sp)
-                    Text("Responda perguntas, teste seus conhecimentos e ganhe moedas.", color = LearnerMutedText, fontSize = 13.sp)
+                    Text("Responda perguntas, teste seus conhecimentos e ganhe pontos.", color = LearnerMutedText, fontSize = 13.sp)
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(99.dp))
@@ -519,56 +581,33 @@ fun HomeMainScreen(
     onOpenPomodoro: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenHelp: () -> Unit,
-    onOpenLearningPath: (String) -> Unit,
+    onOpenPriorityReview: () -> Unit,
+    onOpenBestGoal: () -> Unit,
     onOpenWeeklyProgress: () -> Unit,
     onOpenQuizPoker: () -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
-    val normalizedQuery = searchQuery.trim().lowercase()
-    val showPomodoro = normalizedQuery.isBlank() || "pomodoro foco timer".contains(normalizedQuery)
-    val showLearningPath = normalizedQuery.isBlank() ||
-        "matematica aplicada engenharia calculo progresso estudo".contains(normalizedQuery)
-
     HeaderSection(
         userName = user.name,
         coins = user.coins,
         hasNotifications = reviews.any { !it.completed },
         onProfileClick = onOpenProfile,
-        onHelpClick = onOpenHelp,
-        searchQuery = searchQuery,
-        onSearchQueryChange = { searchQuery = it }
+        onHelpClick = onOpenHelp
     )
 
-    if (false && showPomodoro) {
-        HomeFeatureCard(
+    ProgressOverview(progress = progress, sessions = sessions, goals = goals, onOpenWeeklyProgress = onOpenWeeklyProgress)
+    HomeFeatureCard(
         title = "Pomodoro",
         subtitle = "Inicie uma sessão focada com contador",
         meta = "${sessions.size} registros salvos",
         accent = LearnerPrimary,
         onClick = onOpenPomodoro
-        )
-    }
-    if (showLearningPath) {
-        ProgressOverview(progress = progress, sessions = sessions, goals = goals, onOpenWeeklyProgress = onOpenWeeklyProgress)
-    }
-    if (showPomodoro) {
-        HomeFeatureCard(
-            title = "Pomodoro",
-            subtitle = "Inicie uma sessao focada com contador",
-            meta = "${sessions.size} registros salvos",
-            accent = LearnerPrimary,
-            onClick = onOpenPomodoro
-        )
-    }
-    if (showLearningPath) {
-        LearningPathOptions(onOpenLearningPath = onOpenLearningPath)
-    }
-    if (!showPomodoro && !showLearningPath) {
-        EmptyStateCard(
-            title = "Nenhum resultado",
-            subtitle = "Tente buscar por Pomodoro, matematica, engenharia ou progresso."
-        )
-    }
+    )
+    PriorityActionCards(
+        reviews = reviews,
+        goals = goals,
+        onOpenPriorityReview = onOpenPriorityReview,
+        onOpenBestGoal = onOpenBestGoal
+    )
 }
 
 @Composable
@@ -800,7 +839,7 @@ fun WeeklyProgressTasksScreen(
         if (filteredCards.isEmpty()) {
             EmptyStateCard(
                 title = "Nada marcado para este dia",
-                subtitle = "Use as setas para navegar entre os dias ou registre uma sessao de estudo."
+                subtitle = "Use as setas para navegar entre os dias ou registre uma sessão de estudo."
             )
         } else {
             filteredCards.forEach { item -> WeeklyTaskCard(item) }
@@ -918,22 +957,36 @@ private fun WeeklyTaskCard(item: WeeklyTaskCardData) {
 }
 
 @Composable
-fun LearningPathOptions(onOpenLearningPath: (String) -> Unit) {
+fun PriorityActionCards(
+    reviews: List<ReviewReminderResponse>,
+    goals: List<GoalResponse>,
+    onOpenPriorityReview: () -> Unit,
+    onOpenBestGoal: () -> Unit
+) {
+    val priorityReview = reviews
+        .filter { !it.completed }
+        .sortedWith(compareBy<ReviewReminderResponse> { it.dueDate }.thenBy { it.subject })
+        .firstOrNull()
+    val bestGoal = goals
+        .filter { !it.completed }
+        .maxByOrNull { it.progressPercent }
+
     StudyProgressCard(
-        title = "Matematica aplicada",
+        title = priorityReview?.let { it.topic.orEmpty().ifBlank { it.subject.ifBlank { it.title } } } ?: "Pr?xima revis?o",
         action = "Revisar",
-        progress = "00/20",
+        progress = priorityReview?.dueDate?.takeIf { it.isNotBlank() } ?: "${reviews.count { !it.completed }} pend.",
         accent = Color(0xFF6A63FF),
         variant = 0,
-        onClick = { onOpenLearningPath("Matematica aplicada") }
+        onClick = onOpenPriorityReview
     )
     StudyProgressCard(
-        title = "Fundamentos de engenharia",
-        action = "Explorar",
-        progress = "00/16",
+        title = bestGoal?.title ?: "Meta em progresso",
+        action = "Continuar",
+        progress = bestGoal?.let { "${it.currentMinutes}/${it.targetMinutes}" } ?: "0/0",
+        progressFraction = bestGoal?.let { (it.progressPercent / 100.0).toFloat() },
         accent = Color(0xFFE88CB9),
         variant = 1,
-        onClick = { onOpenLearningPath("Fundamentos de engenharia") }
+        onClick = onOpenBestGoal
     )
 }
 
@@ -1030,6 +1083,7 @@ fun StudyProgressCard(
     title: String,
     action: String,
     progress: String,
+    progressFraction: Float? = null,
     accent: Color,
     variant: Int,
     onClick: () -> Unit
@@ -1041,7 +1095,7 @@ fun StudyProgressCard(
             .clip(RoundedCornerShape(10.dp))
             .background(accent)
             .clickable(onClick = onClick)
-            .padding(20.dp)
+            .padding(horizontal = 20.dp, vertical = 18.dp)
     ) {
         Canvas(modifier = Modifier.matchParentSize()) {
             drawCircle(
@@ -1084,17 +1138,50 @@ fun StudyProgressCard(
             }
         }
 
-        Column(
-            modifier = Modifier.align(Alignment.TopStart),
-            verticalArrangement = Arrangement.spacedBy(15.dp)
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
-            Text(
-                text = title,
-                color = Color.White,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = CircularDisplayFamily
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(11.dp)
+            ) {
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 21.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontFamily = CircularDisplayFamily,
+                    maxLines = 2
+                )
+            }
+            ProgressPill(
+                text = progress,
+                modifier = Modifier.padding(top = if (progressFraction != null) 46.dp else 0.dp)
             )
+        }
+
+        Column(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(top = if (progressFraction != null) 58.dp else 54.dp)
+                .fillMaxWidth(0.62f),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            progressFraction?.let {
+                LinearProgressIndicator(
+                    progress = { it.coerceIn(0f, 1f) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(99.dp)),
+                    color = Color.White,
+                    trackColor = Color.White.copy(alpha = 0.28f)
+                )
+            }
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(99.dp))
@@ -1104,28 +1191,30 @@ fun StudyProgressCard(
                 Text(
                     text = action,
                     color = accent,
-                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
                     fontFamily = CircularDisplayFamily
                 )
             }
         }
+    }
+}
 
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .clip(RoundedCornerShape(99.dp))
-                .background(Color.White.copy(alpha = 0.28f))
-                .padding(horizontal = 14.dp, vertical = 5.dp)
-        ) {
-            Text(
-                text = progress,
-                color = Color.White,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.ExtraBold,
-                fontFamily = CircularDisplayFamily
-            )
-        }
+@Composable
+private fun ProgressPill(text: String, modifier: Modifier = Modifier, subtle: Boolean = false) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(99.dp))
+            .background(Color.White.copy(alpha = if (subtle) 0.18f else 0.28f))
+            .padding(horizontal = 14.dp, vertical = 5.dp)
+    ) {
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontFamily = CircularDisplayFamily
+        )
     }
 }
 
@@ -1136,9 +1225,7 @@ fun HeaderSection(
     coins: Int,
     hasNotifications: Boolean,
     onProfileClick: () -> Unit,
-    onHelpClick: () -> Unit,
-    searchQuery: String,
-    onSearchQueryChange: (String) -> Unit
+    onHelpClick: () -> Unit
 ) {
     Box(
         modifier = Modifier
@@ -1188,7 +1275,7 @@ fun HeaderSection(
                         fontWeight = FontWeight.Normal
                     )
                     Text(
-                        text = "$coins moedas",
+                        text = "$coins pontos",
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.78f)
                     )
@@ -1227,7 +1314,6 @@ fun HeaderSection(
                     }
                 }
             }
-            SearchBar(value = searchQuery, onValueChange = onSearchQueryChange)
         }
     }
 }
@@ -1427,12 +1513,12 @@ fun HelpScreen(onBack: () -> Unit) {
         )
         HelpTopicCard(
             title = "Beneficios do foco em blocos",
-            subtitle = "Dividir o estudo em ciclos torna a tarefa mais leve, cria pausas reais e ajuda voce a acompanhar quanto tempo dedicou a cada materia.",
+            subtitle = "Dividir o estudo em ciclos torna a tarefa mais leve, cria pausas reais e ajuda voc? a acompanhar quanto tempo dedicou a cada materia.",
             accent = LearnerTeal
         )
         HelpTopicCard(
             title = "Como funciona o engajamento",
-            subtitle = "Sessoes concluidas alimentam seu historico, metas e missoes. Quando uma missao estiver completa, voce pode resgatar moedas e acompanhar sua evolucao ao longo da semana.",
+            subtitle = "Sessoes concluidas alimentam seu historico, metas e missoes. Quando uma missao estiver completa, voc? pode resgatar pontos e acompanhar sua evolucao ao longo da semana.",
             accent = LearnerCoral
         )
         BottomBackButton(onBack = onBack)
@@ -1456,7 +1542,7 @@ fun LearningPathScreen(title: String, onBack: () -> Unit, onStartFocus: () -> Un
             ListLine(firstActivity, "15 min de estudo guiado")
             ListLine(secondActivity, "Aplicar o que foi estudado")
             Button(onClick = onStartFocus, modifier = Modifier.fillMaxWidth()) {
-                Text("Iniciar sessao de foco")
+                Text("Iniciar sessão de foco")
             }
         }
         BottomBackButton(onBack = onBack)

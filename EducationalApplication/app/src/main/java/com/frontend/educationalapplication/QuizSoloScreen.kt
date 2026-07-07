@@ -250,10 +250,10 @@ fun QuizSoloScreen(
                 )
             }.onSuccess { newBalance ->
                 onCoinsBalanceUpdated(newBalance)
-                rewardMessage = "Moedas adicionadas ao seu saldo."
+                rewardMessage = "Pontos adicionados ao seu saldo."
             }.onFailure {
                 // TODO: criar fila offline de recompensas se o backend estiver indisponível.
-                rewardMessage = "Moedas calculadas. Sincronize quando estiver online."
+                rewardMessage = "Pontos calculados. Sincronize quando estiver online."
             }
         }
     }
@@ -324,7 +324,7 @@ private fun QuizSoloError(message: String, onRetry: () -> Unit) {
 private fun QuizSoloStart(questions: List<QuizQuestion>, onStart: () -> Unit) {
     val estimatedReward = QuizSoloRewardRules.calculate(questions.size, questions.size)
     Text("Quiz Solo", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
-    Text("Responda perguntas e ganhe moedas por acertos.", color = LearnerMutedText)
+    Text("Responda perguntas e ganhe pontos por acertos.", color = LearnerMutedText)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
@@ -343,7 +343,7 @@ private fun QuizSoloStart(questions: List<QuizQuestion>, onStart: () -> Unit) {
                     Text("Sem limite de tempo por enquanto", color = LearnerMutedText)
                 }
             }
-            Text("Recompensa máxima: $estimatedReward moedas", color = LearnerTeal, fontWeight = FontWeight.Black)
+            Text("Recompensa máxima: $estimatedReward pontos", color = LearnerTeal, fontWeight = FontWeight.Black)
             Text(
                 "TODO: futuramente permitir escolher quantidade, categoria, dificuldade e modo com tempo.",
                 color = LearnerMutedText,
@@ -369,7 +369,7 @@ private fun QuizSoloQuestion(
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         QuizSoloMetric("${state.currentIndex + 1}/${state.questions.size}", "pergunta", Modifier.weight(1f))
         QuizSoloMetric("${state.correctAnswers}", "acertos", Modifier.weight(1f))
-        QuizSoloMetric("${QuizSoloRewardRules.calculate(state.correctAnswers, state.questions.size)}", "moedas", Modifier.weight(1f))
+        QuizSoloMetric("${QuizSoloRewardRules.calculate(state.correctAnswers, state.questions.size)}", "pontos", Modifier.weight(1f))
     }
     LinearProgressIndicator(
         progress = { progress.coerceIn(0f, 1f) },
@@ -415,7 +415,7 @@ private fun QuizSoloQuestion(
             if (answered) {
                 val won = selected == question.correctAnswerIndex
                 Text(
-                    text = if (won) "Você acertou! +${QuizSoloRewardRules.COINS_PER_CORRECT} moedas" else "Quase. Resposta correta: ${question.options[question.correctAnswerIndex]}",
+                    text = if (won) "Você acertou! +${QuizSoloRewardRules.COINS_PER_CORRECT} pontos" else "Quase. Resposta correta: ${question.options[question.correctAnswerIndex]}",
                     color = if (won) LearnerTeal else LearnerCoral,
                     fontWeight = FontWeight.Black
                 )
@@ -455,7 +455,7 @@ private fun QuizSoloResult(
             }
             Text("Você acertou ${state.correctAnswers} de $total perguntas.", fontWeight = FontWeight.Black, textAlign = TextAlign.Center)
             Text("Erros: ${state.wrongAnswers}", color = LearnerMutedText)
-            Text("Moedas ganhas: ${state.earnedCoins}", color = LearnerTeal, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Text("Pontos ganhos: ${state.earnedCoins}", color = LearnerTeal, fontWeight = FontWeight.Black, fontSize = 20.sp)
             rewardMessage?.let { Text(it, color = LearnerMutedText, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
             Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Jogar novamente") }
             Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar para Jogos") }

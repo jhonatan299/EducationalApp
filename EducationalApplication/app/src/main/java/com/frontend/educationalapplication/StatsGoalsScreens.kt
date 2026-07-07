@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -143,7 +144,7 @@ fun MissionsScreen(
         missions.forEach { mission ->
             ListLine(
                 title = mission.title,
-                detail = "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} moedas"
+                detail = "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} pontos"
             )
             Button(
                 enabled = mission.completed && !mission.claimed,
@@ -258,6 +259,15 @@ fun RankingDashboard(api: EducationalApi, userId: Long, onBack: () -> Unit) {
     val scope = rememberCoroutineScope()
 
     fun loadRanking() {
+        if (userId <= 0 || BuildConfig.DEMO_MODE) {
+            ranking = demoRanking(
+                period = if (rankingPeriod == RankingPeriod.Week) "WEEK" else "ALL_TIME",
+                currentUserId = userId
+            )
+            loading = false
+            error = null
+            return
+        }
         loading = true
         error = null
         scope.apiCall(
@@ -471,7 +481,7 @@ fun WeeklyStudyChart(days: List<Pair<String, Int>>, isPreview: Boolean = false) 
             }
             if (isPreview) {
                 Text(
-                    "A amostra e substituida assim que voce registrar uma sessao.",
+                    "A amostra e substitu?da assim que voc? registrar uma sessão.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -577,49 +587,194 @@ fun ProgressDashboardHeader(goals: List<GoalResponse>) {
 @Composable
 fun GoalsMissionsDashboard(
     api: EducationalApi,
+    userId: Long,
+    sessions: List<StudySessionResponse>,
     goals: List<GoalResponse>,
     missions: List<MissionResponse>,
     onClaimed: (Int) -> Unit
 ) {
-    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val missionState = remember(userId, sessions, refreshKey) {
+        buildMissionGamificationState(context, userId, sessions)
+    }
+    var showCustomGoalForm by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionHeader(
-            title = "Metas e missoes",
-            subtitle = "Transforme seus estudos em pequenos objetivos"
+            title = "Metas e Missões",
+            subtitle = "Ganhe pontos com sessões reais de estudo"
         )
 
-        if (goals.isEmpty() && missions.isEmpty()) {
-            EmptyStateCard(
-                title = "Nada por aqui ainda",
-                subtitle = "Suas metas e missoes aparecerao conforme voce avancar nos estudos."
-            )
-            return@Column
+        MissionPointsSummaryCard(points = missionState.points)
+
+        SectionCard("Missões do app") {
+            Text("Só contam sessões salvas com 10 minutos ou mais.", color = LearnerMutedText, fontSize = 12.sp)
+            missionState.missions.forEachIndexed { index, mission ->
+                MissionRuleCard(
+                    mission = mission,
+                    accent = if (index % 2 == 0) Color(0xFF6A63FF) else Color(0xFFE88CB9)
+                )
+            }
         }
 
-        goals.forEachIndexed { index, goal ->
-            DashboardAccentCard(
-                title = goal.title,
-                detail = "${goal.currentMinutes}/${goal.targetMinutes} min - faltam ${goal.daysUntilDueDate} dias",
-                accent = if (index % 2 == 0) Color(0xFF6A63FF) else Color(0xFF4674F5),
-                progress = (goal.progressPercent / 100.0).toFloat(),
-                emphasized = true
-            )
-        }
-
-        missions.forEachIndexed { index, mission ->
-            MissionDashboardCard(
-                mission = mission,
-                accent = if (index % 2 == 0) Color(0xFFE88CB9) else Color(0xFF7A6BEA),
-                onClaim = {
-                    scope.apiCall(
-                        action = { api.claimMission(mission.id) },
-                        onSuccess = { onClaimed(it.rewardCoins) },
-                        onError = {}
-                    )
+        SectionCard("Metas personalizadas") {
+            Text("Metas personalizadas servem só para acompanhamento. Elas não dão pontos.", color = LearnerMutedText, fontSize = 12.sp)
+            if (showCustomGoalForm) {
+                CustomGoalForm(
+                    onCancel = { showCustomGoalForm = false },
+                    onSave = { title, description, period, target ->
+                        createCustomMissionGoal(context, userId, title, description, period, target)
+                        showCustomGoalForm = false
+                        refreshKey += 1
+                    }
+                )
+            } else {
+                Button(onClick = { showCustomGoalForm = true }, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ Criar meta personalizada")
                 }
+            }
+            if (missionState.customGoals.isEmpty()) {
+                EmptyStateCard("Nenhuma meta personalizada", "Crie uma meta leve para acompanhar um objetivo próprio.")
+            } else {
+                missionState.customGoals.forEach { goal -> CustomGoalCard(goal) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissionPointsSummaryCard(points: UserPointsUi) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF292059))
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Pontuação", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                MissionSummaryMetric("${points.totalPoints}", "total", Modifier.weight(1f))
+                MissionSummaryMetric("${points.pointsToday}", "hoje", Modifier.weight(1f))
+                MissionSummaryMetric("${points.currentStudyStreak}", "dias", Modifier.weight(1f))
+            }
+            Text(
+                "Pontos oficiais: ${points.officialPoints} pts • Metas personalizadas não pontuam • Semanas seguidas: ${points.weeklyStreak}",
+                color = Color.White.copy(alpha = .75f),
+                fontSize = 12.sp
             )
         }
+    }
+}
+
+@Composable
+private fun MissionSummaryMetric(value: String, label: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(18.dp))
+            .background(Color.White.copy(alpha = .12f))
+            .padding(vertical = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(value, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Text(label, color = Color.White.copy(alpha = .72f), fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun MissionRuleCard(mission: AppMissionUi, accent: Color) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = .12f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(mission.name, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                    Text(mission.description, color = LearnerMutedText, fontSize = 12.sp)
+                }
+                Text("+${mission.rewardPoints} pts", color = accent, fontWeight = FontWeight.Black)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                LinearProgressIndicator(
+                    progress = { mission.progress.coerceIn(0f, 1f) },
+                    modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(99.dp)),
+                    color = accent,
+                    trackColor = accent.copy(alpha = .18f)
+                )
+                Text(mission.progressText, color = LearnerMutedText, fontSize = 12.sp)
+            }
+            Text(mission.status, color = if (mission.status == "Resgatada") LearnerTeal else accent, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun CustomGoalCard(goal: CustomGoalUi) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column {
+                Text(goal.title, fontWeight = FontWeight.Black)
+                if (goal.description.isNotBlank()) Text(goal.description, color = LearnerMutedText, fontSize = 12.sp)
+            }
+            LinearProgressIndicator(
+                progress = { goal.progress.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
+                color = LearnerTeal,
+                trackColor = LearnerTeal.copy(alpha = .15f)
+            )
+            Text("${goal.progressText} • ${goal.period} • ${if (goal.completed) "Concluída" else "Em andamento"}", color = LearnerMutedText, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun CustomGoalForm(
+    onCancel: () -> Unit,
+    onSave: (String, String, String, Int) -> Unit
+) {
+    var title by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var period by remember { mutableStateOf("WEEK") }
+    var target by remember { mutableStateOf("3") }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Nome da meta") }, modifier = Modifier.fillMaxWidth())
+        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descrição curta") }, modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf("DAY" to "Hoje", "WEEK" to "Semana", "MONTH" to "Mês").forEach { (value, label) ->
+                MissionPeriodChip(label, period == value, Modifier.weight(1f)) { period = value }
+            }
+        }
+        OutlinedTextField(value = target, onValueChange = { target = it.filter(Char::isDigit).take(2) }, label = { Text("Sessões para concluir") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            Button(
+                enabled = title.trim().isNotBlank(),
+                onClick = { onSave(title, description, period, target.toIntOrNull() ?: 1) },
+                modifier = Modifier.weight(1f)
+            ) { Text("Salvar") }
+            TextButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancelar") }
+        }
+    }
+}
+
+@Composable
+private fun MissionPeriodChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text, color = if (selected) Color.White else LearnerPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center)
     }
 }
 
@@ -709,6 +864,11 @@ fun ProgressBreakdownCard(
 
 @Composable
 fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () -> Unit) {
+    val progress = if (mission.targetMinutes > 0) {
+        mission.progressMinutes.toFloat() / mission.targetMinutes.toFloat()
+    } else {
+        0f
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -721,11 +881,19 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
         ) {
             Text(mission.title, color = Color.White, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold, fontFamily = CircularDisplayFamily)
             Text(
-                "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} moedas",
+                "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} pontos",
                 color = Color.White.copy(alpha = 0.94f),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 fontFamily = CircularDisplayFamily
+            )
+            LinearProgressIndicator(
+                progress = { progress.coerceIn(0f, 1f) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(99.dp)),
+                color = Color.White,
+                trackColor = Color.White.copy(alpha = 0.30f)
             )
             Button(
                 enabled = mission.completed && !mission.claimed,
@@ -738,20 +906,25 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
                     disabledContentColor = accent.copy(alpha = 0.65f)
                 )
             ) {
-                Text(if (mission.claimed) "Resgatada" else "Resgatar")
+                Text(if (mission.claimed) "Pontos resgatados" else "Resgatar pontos")
             }
         }
     }
 }
+
+private fun goalRewardPoints(goal: GoalResponse): Int =
+    (goal.targetMinutes / 5).coerceAtLeast(10)
 
 @Composable
 fun ReviewsScreen(
     api: EducationalApi,
     userId: Long,
     reviews: List<ReviewReminderResponse>,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onStartStudy: () -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     val pending = reviews.count { !it.completed }
     var showCreateForm by remember { mutableStateOf(false) }
     var title by remember { mutableStateOf("") }
@@ -761,13 +934,13 @@ fun ReviewsScreen(
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         SectionHeader(
-            title = "Revisoes",
+            title = "Revisões",
             subtitle = "$pending lembretes pendentes"
         )
 
         SummaryCard(
             title = "$pending",
-            subtitle = if (pending == 1) "revisao para fazer" else "revisoes para fazer",
+            subtitle = if (pending == 1) "revisão para fazer" else "revisões para fazer",
             accentColor = LearnerTeal
         )
 
@@ -861,8 +1034,8 @@ fun ReviewsScreen(
 
         if (reviews.isEmpty()) {
             EmptyStateCard(
-                title = "Sem revisoes por enquanto",
-                subtitle = "Salve uma sessao de estudo ou crie uma revisao manualmente."
+                title = "Sem revisões por enquanto",
+                subtitle = "Salve uma sessão de estudo ou crie uma revisão manualmente."
             )
             return@Column
         }
@@ -870,6 +1043,18 @@ fun ReviewsScreen(
         reviews.forEach { review ->
             ReviewReminderCard(
                 review = review,
+                onStartReview = {
+                    savePomodoroPrefill(
+                        context,
+                        PomodoroPrefill(
+                            subject = review.subject,
+                            topic = review.topic.orEmpty(),
+                            studyType = "Revisão",
+                            taskTitle = review.taskTitle ?: review.title
+                        )
+                    )
+                    onStartStudy()
+                },
                 onComplete = {
                     scope.apiCall(
                         action = { api.completeReview(review.id) },

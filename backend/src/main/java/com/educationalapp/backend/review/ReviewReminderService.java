@@ -23,6 +23,10 @@ public class ReviewReminderService {
                 null,
                 request.title().trim(),
                 request.subject().trim(),
+                request.topic(),
+                request.taskTitle(),
+                request.notes(),
+                request.originalDifficulty(),
                 request.dueDate()
         ));
     }

@@ -2,15 +2,15 @@
 
 Este app foi criado para ajudar estudantes a organizar melhor a rotina de estudos.
 
-A ideia principal é simples: o aluno pode estudar com Pomodoro, registrar o que estudou, acompanhar revisões, ver o calendário, olhar estatísticas e também aprender com quizzes.
+A ideia principal é simples: o aluno pode estudar com Pomodoro, registrar o que estudou, acompanhar revisões, ver calendário, consultar estatísticas, cumprir missões e jogar quizzes.
 
-Nesta versão demo, não precisa fazer login. Ao abrir o app, ele já entra direto para testar.
+Nesta versão demo, o app pode abrir com dados de exemplo para facilitar a apresentação.
 
 ## Tela inicial
 
-Na tela inicial, a professora consegue ver um resumo do app e acessar as principais áreas pelo menu de baixo.
+Na tela inicial, a professora consegue ver um resumo do estudante e acessar as principais áreas pelo menu inferior.
 
-O menu tem:
+Menu principal:
 
 - Início;
 - Relatório;
@@ -23,50 +23,53 @@ O menu tem:
 
 O Pomodoro é um contador de estudo.
 
-O aluno pode escolher uma matéria ou tópico, se quiser, mas isso não é obrigatório.
+O aluno pode escolher uma matéria ou tema, se quiser, mas isso não é obrigatório.
 
 Exemplo:
 
 - Matéria: Português;
-- Tópico: Gramática;
+- Tema: Gramática;
 - Tempo: 25 minutos.
 
 Depois é só iniciar o contador. Quando terminar, a sessão pode ser salva como estudo realizado.
 
 ## Planejamento de estudo
 
-No planejamento, o aluno pode organizar as matérias que quer estudar.
+No planejamento, o aluno organiza as matérias que quer estudar.
 
-Ele pode criar uma matéria, adicionar tópicos e marcar o progresso aos poucos.
+Ele pode:
+
+- criar matéria;
+- adicionar temas;
+- criar tarefas de estudo;
+- iniciar Pomodoro a partir de uma tarefa;
+- acompanhar progresso.
 
 Exemplo:
 
 - Matemática;
-- Funções;
-- Frações;
+- Funções do 1º grau;
+- Porcentagem;
 - Geometria.
 
-Isso ajuda o app a organizar melhor os relatórios, revisões e estatísticas.
-
-Mas é opcional. O aluno pode usar o app mesmo sem cadastrar nada.
+Isso ajuda o app a organizar melhor relatórios, revisões e estatísticas.
 
 ## Relatórios
 
 Na parte de relatórios, o aluno registra o que estudou.
 
-Ele pode colocar:
+Ele pode informar:
 
-- matéria;
-- tópico;
 - tempo estudado;
-- tipo de estudo;
-- quantidade de exercícios;
-- quantidade de acertos;
-- anotações.
+- matéria;
+- tema;
+- dificuldade da sessão;
+- nota rápida;
+- anexos locais de imagem ou áudio.
 
 Exemplo:
 
-“Estudei Português, tópico Gramática, fiz 40 exercícios e acertei 38.”
+> Estudei Português, tema Gramática, por 40 minutos. Fiz exercícios e preciso revisar concordância.
 
 Depois isso aparece no histórico.
 
@@ -74,102 +77,93 @@ Depois isso aparece no histórico.
 
 A área de revisões ajuda o aluno a lembrar de revisar o conteúdo depois.
 
-O aluno pode criar revisões manualmente ou deixar o app criar lembretes depois de uma sessão de estudo.
+O app pode criar revisões:
+
+- manualmente;
+- depois de uma sessão de Pomodoro;
+- depois de um relatório;
+- por meio do planejamento inteligente com IA.
 
 Exemplo:
 
-“Revisar Gramática amanhã.”
-
-Quando terminar, ele pode marcar como concluída.
+- Revisar Matemática;
+- Tema: Funções do 1º grau;
+- Data: amanhã;
+- Tipo: exercícios.
 
 ## Calendário
 
-O calendário mostra os dias em que existem estudos ou revisões.
+O calendário mostra sessões e revisões por dia.
 
-Assim fica mais fácil acompanhar a rotina e ver o que foi feito em cada dia.
+Ele ajuda o aluno a entender:
+
+- o que já estudou;
+- o que está marcado para revisar;
+- quais dias estão vazios.
 
 ## Estatísticas
 
-A parte de estatísticas mostra o progresso do aluno.
+A tela de estatísticas mostra o progresso do aluno.
 
-Ela ajuda a responder perguntas como:
+Ela pode mostrar:
 
-- Quanto tempo estudei?
-- Quais matérias estudei mais?
-- Tenho revisões pendentes?
-- Estou evoluindo durante a semana?
+- tempo estudado;
+- dias ativos;
+- matérias estudadas;
+- ranking;
+- progresso por matéria.
 
-## Jogos e quizzes
+## Metas e Missões
 
-A aba Jogos é a parte mais divertida do app.
+As missões oficiais dão pontos quando o aluno estuda de verdade.
 
-Ela foi pensada para o aluno aprender de um jeito mais leve.
+Exemplos:
 
-### Quiz Solo
+- Estudar hoje;
+- Estudar na semana;
+- 7 dias de foco;
+- Mês disciplinado.
 
-O Quiz Solo é um jogo individual.
+As metas personalizadas servem apenas para acompanhamento pessoal. Elas não dão pontos.
 
-O aluno responde perguntas, vê se acertou ou errou e ganha moedas pelos acertos.
+## Jogos
 
-Exemplo:
+A área de jogos tem atividades para tornar o estudo mais leve.
 
-- 10 perguntas;
-- cada acerto vale moedas;
-- no final aparece o resultado.
+Inclui:
 
-Essa parte serve para o aluno testar o que sabe.
+- Quiz Solo;
+- Quiz Poker;
+- Psych/Bluff Trivia;
+- banco de perguntas;
+- perguntas geradas com IA.
 
-### Gerar perguntas com IA
+## Planejamento inteligente com IA
 
-O app também tem uma opção para gerar perguntas a partir de um texto.
+O aluno pode pedir para a IA criar um plano de revisão.
 
-O aluno ou professor pode colar um conteúdo, por exemplo um resumo de aula, e o app cria perguntas de múltipla escolha.
+Fluxo:
 
-Depois o usuário pode escolher:
+1. Escolhe matéria e tema.
+2. Informa prazo e tempo disponível.
+3. A IA gera duas opções de plano.
+4. O aluno escolhe uma.
+5. O aluno revisa e edita antes de salvar.
+6. O app cria as revisões programadas.
 
-- salvar todas;
-- salvar só algumas;
-- ignorar.
+Importante: a chave da IA fica no backend, não dentro do app Android.
 
-A IA apenas cria as perguntas. Quem decide se a pergunta é boa ou como organizar é o usuário.
+## Resumo para apresentação
 
-### Banco de perguntas
+Uma forma simples de apresentar:
 
-As perguntas salvas ficam no banco de perguntas.
-
-Ali o usuário pode:
-
-- ver as perguntas;
-- buscar;
-- apagar;
-- criar listas.
-
-As listas ajudam a organizar as perguntas do jeito que o usuário quiser.
-
-Exemplos de listas:
-
-- Perguntas difíceis;
-- Prova de sexta;
-- Para revisar;
-- Para jogar com amigos.
-
-### Quiz Poker e Psych
-
-Também existem protótipos de jogos para jogar com amigos.
-
-Eles ainda são modelos iniciais, mas mostram a ideia de criar dinâmicas mais sociais e divertidas usando perguntas.
-
-## Resumo da ideia
-
-O app junta estudo organizado com jogos.
-
-O aluno pode:
-
-- planejar o que estudar;
-- usar Pomodoro;
-- registrar o progresso;
-- revisar depois;
-- acompanhar estatísticas;
-- praticar com quizzes.
-
-Tudo isso sem obrigar o aluno a usar todas as funções. Ele pode começar simples e usar mais recursos aos poucos.
+1. Mostrar a Home.
+2. Abrir Pomodoro.
+3. Mostrar Planejamento.
+4. Criar ou abrir um Relatório.
+5. Mostrar Revisões.
+6. Mostrar Calendário.
+7. Mostrar Estatísticas e Ranking.
+8. Mostrar Metas e Missões.
+9. Mostrar Jogos.
+10. Mostrar Planejamento inteligente com IA.

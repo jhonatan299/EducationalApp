@@ -227,7 +227,7 @@ fun Throwable.toFriendlyError(): FriendlyError {
         "401" in raw || "403" in raw || "unauthorized" in raw || "forbidden" in raw -> FriendlyError(
             cause = FriendlyErrorCause.Unauthorized,
             title = "Sessao expirada",
-            description = "Sua sessao pode ter expirado. Entre novamente para continuar.",
+            description = "Sua sessão pode ter expirado. Entre novamente para continuar.",
             actionLabel = "Voltar ao login"
         )
 
@@ -304,7 +304,7 @@ private fun ErrorCausePill(cause: FriendlyErrorCause) {
         FriendlyErrorCause.NoInternet -> "Causa: conexao com a internet"
         FriendlyErrorCause.Server -> "Causa: servidor indisponivel"
         FriendlyErrorCause.NotFound -> "Causa: conteudo nao encontrado"
-        FriendlyErrorCause.Unauthorized -> "Causa: sessao ou permissao"
+        FriendlyErrorCause.Unauthorized -> "Causa: sessão ou permissão"
         FriendlyErrorCause.Unknown -> "Causa: erro inesperado"
     }
     Box(
@@ -501,6 +501,7 @@ fun CalendarDayCard(day: CalendarDayResponse) {
 @Composable
 fun ReviewReminderCard(
     review: ReviewReminderResponse,
+    onStartReview: () -> Unit,
     onComplete: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -510,55 +511,38 @@ fun ReviewReminderCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(46.dp)
-                        .clip(CircleShape)
-                        .background(if (review.completed) LearnerPrimaryTint else LearnerTeal.copy(alpha = 0.16f)),
-                    contentAlignment = Alignment.Center
-                ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier.size(46.dp).clip(CircleShape).background(if (review.completed) LearnerPrimaryTint else LearnerTeal.copy(alpha = 0.16f)), contentAlignment = Alignment.Center) {
                     NavGlyph(index = 5, color = if (review.completed) LearnerMutedText else LearnerTeal)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = review.title,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = "${review.subject} - prazo ${review.dueDate}",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                    Text(review.title, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black)
+                    Text(review.subject.ifBlank { "Sem matéria" }, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                    review.topic?.let { Text("Tópico: $it", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
+                    review.taskTitle?.let { Text("Tarefa: $it", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
                 }
             }
-            Button(
-                enabled = !review.completed,
-                onClick = onComplete,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-                    .clip(RoundedCornerShape(14.dp))
-            ) {
-                Text(if (review.completed) "Revisada" else "Marcar como revisada")
-            }
-            TextButton(
-                onClick = onDelete,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Eliminar revisão", color = LearnerCoral, fontWeight = FontWeight.Bold)
-            }
+            Text("Revisão para: ${review.dueDate} • ${review.reviewStatusLabel()}", color = LearnerPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+            review.originalDifficulty?.let { Text("Dificuldade original: ${it.toReviewDifficultyLabel()}", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
+            review.notes?.takeIf { it.isNotBlank() }?.let { Text("Anotação: $it", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
+            Button(enabled = !review.completed, onClick = onStartReview, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))) { Text("Iniciar revisão") }
+            Button(enabled = !review.completed, onClick = onComplete, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))) { Text(if (review.completed) "Revisada" else "Marcar como concluída") }
+            TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) { Text("Eliminar revisão", color = LearnerCoral, fontWeight = FontWeight.Bold) }
         }
     }
+}
+
+private fun ReviewReminderResponse.reviewStatusLabel(): String {
+    if (completed) return "concluída"
+    val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Calendar.getInstance().time)
+    return if (dueDate < today) "atrasada" else "pendente"
+}
+
+private fun String.toReviewDifficultyLabel(): String = when (uppercase(Locale.getDefault())) {
+    "HARD" -> "Difícil"
+    "EASY" -> "Fácil"
+    else -> "Ok"
 }
 
 @Composable

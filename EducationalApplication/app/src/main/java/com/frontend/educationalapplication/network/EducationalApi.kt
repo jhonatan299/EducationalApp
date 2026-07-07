@@ -115,13 +115,21 @@ class EducationalApi(
         userId: Long,
         title: String,
         subject: String,
-        dueDate: String
+        dueDate: String,
+        topic: String? = null,
+        taskTitle: String? = null,
+        notes: String? = null,
+        originalDifficulty: String? = null
     ): ReviewReminderResponse = post(
         path = "/api/reviews",
         body = JSONObject()
             .put("userId", userId)
             .put("title", title)
             .put("subject", subject)
+            .put("topic", topic)
+            .put("taskTitle", taskTitle)
+            .put("notes", notes)
+            .put("originalDifficulty", originalDifficulty)
             .put("dueDate", dueDate)
     ).toReviewReminderResponse()
 
@@ -162,6 +170,30 @@ class EducationalApi(
             .put("gameMode", gameMode)
             .put("questionCount", questionCount)
     ).toGeneratedQuizResponse()
+
+    suspend fun generateRevisionRoadmap(
+        baseType: String,
+        subjectName: String,
+        topicName: String,
+        planWholeSubject: Boolean,
+        durationDays: Int,
+        dailyAvailableMinutes: Int,
+        preferredTime: String,
+        level: String,
+        goal: String
+    ): RevisionRoadmapResponse = post(
+        path = "/api/ai/revision-roadmap",
+        body = JSONObject()
+            .put("baseType", baseType)
+            .put("subjectName", subjectName)
+            .put("topicName", topicName)
+            .put("planWholeSubject", planWholeSubject)
+            .put("durationDays", durationDays)
+            .put("dailyAvailableMinutes", dailyAvailableMinutes)
+            .put("preferredTime", preferredTime)
+            .put("level", level)
+            .put("goal", goal)
+    ).toRevisionRoadmapResponse()
 
     suspend fun saveGeneratedQuestions(
         subject: String,
@@ -372,8 +404,13 @@ private fun JSONObject.toReviewReminderResponse() = ReviewReminderResponse(
     id = getLong("id"),
     title = getString("title"),
     subject = getString("subject"),
+    topic = optString("topic").takeIf { it.isNotBlank() },
+    taskTitle = optString("taskTitle").takeIf { it.isNotBlank() },
+    notes = optString("notes").takeIf { it.isNotBlank() },
+    originalDifficulty = optString("originalDifficulty").takeIf { it.isNotBlank() },
     dueDate = getString("dueDate"),
-    completed = getBoolean("completed")
+    completed = getBoolean("completed"),
+    completedAt = optString("completedAt").takeIf { it.isNotBlank() }
 )
 
 private fun JSONObject.toCalendarDayResponse(): CalendarDayResponse {
@@ -442,6 +479,43 @@ private fun JSONObject.toQuestionListResponse(): QuestionListResponse {
         questionIds = List(idsArray.length()) { index -> idsArray.getLong(index) }
     )
 }
+
+private fun JSONObject.toRevisionRoadmapResponse(): RevisionRoadmapResponse {
+    val optionsArray = optJSONArray("options") ?: JSONArray()
+    return RevisionRoadmapResponse(
+        options = List(optionsArray.length()) { index ->
+            optionsArray.getJSONObject(index).toStudyPlanOptionResponse()
+        }
+    )
+}
+
+private fun JSONObject.toStudyPlanOptionResponse(): StudyPlanOptionResponse {
+    val topicsArray = optJSONArray("suggestedTopics") ?: JSONArray()
+    val revisionsArray = optJSONArray("revisions") ?: JSONArray()
+    return StudyPlanOptionResponse(
+        optionNumber = optInt("optionNumber"),
+        title = optString("title"),
+        description = optString("description"),
+        estimatedTotalMinutes = optInt("estimatedTotalMinutes"),
+        difficulty = optString("difficulty"),
+        suggestedTopics = List(topicsArray.length()) { index -> topicsArray.getString(index) },
+        revisions = List(revisionsArray.length()) { index ->
+            revisionsArray.getJSONObject(index).toPlannedRevisionResponse()
+        }
+    )
+}
+
+private fun JSONObject.toPlannedRevisionResponse(): PlannedRevisionResponse =
+    PlannedRevisionResponse(
+        subjectName = optString("subjectName"),
+        topicName = optString("topicName"),
+        date = optString("date"),
+        time = optString("time"),
+        durationMinutes = optInt("durationMinutes"),
+        revisionType = optString("revisionType"),
+        description = optString("description"),
+        priority = optString("priority")
+    )
 
 private fun JSONObject.toRankingResponse(): RankingResponse {
     val playersArray = getJSONArray("players")

@@ -189,15 +189,25 @@ private fun ReviewReminderResponse.toJson() = JSONObject()
     .put("id", id)
     .put("title", title)
     .put("subject", subject)
+    .put("topic", topic)
+    .put("taskTitle", taskTitle)
+    .put("notes", notes)
+    .put("originalDifficulty", originalDifficulty)
     .put("dueDate", dueDate)
     .put("completed", completed)
+    .put("completedAt", completedAt)
 
 private fun JSONObject.toReview() = ReviewReminderResponse(
     id = optLong("id"),
     title = optString("title"),
     subject = optString("subject"),
+    topic = optString("topic").takeIf { it.isNotBlank() },
+    taskTitle = optString("taskTitle").takeIf { it.isNotBlank() },
+    notes = optString("notes").takeIf { it.isNotBlank() },
+    originalDifficulty = optString("originalDifficulty").takeIf { it.isNotBlank() },
     dueDate = optString("dueDate"),
-    completed = optBoolean("completed")
+    completed = optBoolean("completed"),
+    completedAt = optString("completedAt").takeIf { it.isNotBlank() }
 )
 
 private fun CalendarDayResponse.toJson() = JSONObject()

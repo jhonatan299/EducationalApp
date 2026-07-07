@@ -80,189 +80,367 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+
+class PomodoroPlayerState {
+    var subject by mutableStateOf("Matem\u00e1tica")
+    var content by mutableStateOf("")
+    var studyType by mutableStateOf("Revis\u00e3o")
+    var focusMinutes by mutableStateOf("25")
+    var breakMinutes by mutableStateOf("5")
+    var pomodoroId by mutableLongStateOf(0L)
+    var remainingSeconds by mutableIntStateOf(0)
+    var totalSeconds by mutableIntStateOf(0)
+    var running by mutableStateOf(false)
+    var minimized by mutableStateOf(false)
+    var showQuickReport by mutableStateOf(false)
+    var perceivedDifficulty by mutableStateOf("Ok")
+    var quickNote by mutableStateOf("")
+    var scheduleReview by mutableStateOf(true)
+    var activeSubjectId by mutableLongStateOf(0L)
+    var activeTopicId by mutableLongStateOf(0L)
+    var activeTaskId by mutableLongStateOf(0L)
+    var activeTaskTitle by mutableStateOf("")
+    var status by mutableStateOf("Pronto")
+    var timerAccent by mutableStateOf(LearnerPrimary)
+
+    val hasActiveTimer: Boolean
+        get() = totalSeconds > 0 && !showQuickReport
+}
+
+@Composable
+fun rememberPomodoroPlayerState(): PomodoroPlayerState = remember { PomodoroPlayerState() }
+
+@Composable
+fun PomodoroTicker(state: PomodoroPlayerState) {
+    LaunchedEffect(state.running) {
+        while (state.running && state.remainingSeconds > 0) {
+            delay(1.seconds)
+            state.remainingSeconds -= 1
+        }
+        if (state.running && state.remainingSeconds == 0) {
+            state.running = false
+            state.minimized = false
+            state.showQuickReport = true
+            state.status = "Foco conclu\u00eddo"
+        }
+    }
+}
+
 @Composable
 fun PomodoroDetailScreen(
     api: EducationalApi,
     userId: Long,
+    playerState: PomodoroPlayerState,
     onBack: () -> Unit,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onMinimize: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ReportSubscreenHeader(
             title = "Pomodoro",
             onBack = onBack
         )
-        PomodoroScreen(api = api, userId = userId, onDone = onDone)
+        PomodoroScreen(api = api, userId = userId, playerState = playerState, onDone = onDone, onMinimize = onMinimize)
         BottomBackButton(onBack = onBack)
     }
 }
 
 @Composable
-fun PomodoroScreen(api: EducationalApi, userId: Long, onDone: () -> Unit) {
-    var subject by remember { mutableStateOf("Matematica") }
-    var content by remember { mutableStateOf("") }
-    var studyType by remember { mutableStateOf("Revisão") }
-    var focusMinutes by remember { mutableStateOf("25") }
-    var breakMinutes by remember { mutableStateOf("5") }
-    var pomodoroId by remember { mutableLongStateOf(0L) }
-    var remainingSeconds by remember { mutableIntStateOf(0) }
-    var totalSeconds by remember { mutableIntStateOf(0) }
-    var running by remember { mutableStateOf(false) }
-    var status by remember { mutableStateOf("Pronto") }
-    var timerAccent by remember { mutableStateOf(LearnerPrimary) }
+fun PomodoroScreen(
+    api: EducationalApi,
+    userId: Long,
+    playerState: PomodoroPlayerState,
+    onDone: () -> Unit,
+    onMinimize: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val plannedSubjects = remember(userId) { loadStudyPlanningSubjects(context, userId) }
-    val selectedPlan = plannedSubjects.firstOrNull { it.name == subject }
+    val selectedPlan = plannedSubjects.firstOrNull { it.name == playerState.subject }
     val topics = selectedPlan?.topics.orEmpty()
 
     LaunchedEffect(userId) {
-        if (userId > 0) {
-            syncPendingPomodoros(context, api, userId) { synced ->
-                if (synced > 0) {
-                    status = "$synced sessao offline sincronizada"
-                    onDone()
-                }
-            }
+        loadPomodoroPrefill(context)?.let { prefill ->
+            playerState.activeSubjectId = prefill.subjectId
+            playerState.activeTopicId = prefill.topicId
+            playerState.activeTaskId = prefill.taskId
+            playerState.activeTaskTitle = prefill.taskTitle
+            playerState.subject = prefill.subject
+            playerState.content = prefill.topic
+            playerState.studyType = prefill.studyType
+            clearPomodoroPrefill(context)
+            playerState.status = "Pronto para estudar: ${prefill.taskTitle.ifBlank { prefill.topic.ifBlank { prefill.subject } }}"
         }
     }
 
-    LaunchedEffect(running) {
-        while (running && remainingSeconds > 0) {
-            delay(1.seconds)
-            remainingSeconds -= 1
-        }
-        if (running && remainingSeconds == 0) {
-            running = false
-            status = "Foco concluido"
+    LaunchedEffect(userId) {
+        if (userId > 0) syncPendingPomodoros(context, api, userId) { synced ->
+            if (synced > 0) {
+                playerState.status = "$synced sess\u00e3o offline sincronizada"
+                onDone()
+            }
         }
     }
 
     SectionCard("Pomodoro") {
         PomodoroTimerCircle(
-            time = timerText(remainingSeconds),
-            label = if (running) "FOCO" else status.uppercase(),
-            accent = timerAccent,
-            progress = if (totalSeconds > 0) remainingSeconds.toFloat() / totalSeconds else 0f
+            timerText(playerState.remainingSeconds),
+            if (playerState.running) "FOCO" else playerState.status.uppercase(),
+            playerState.timerAccent,
+            if (playerState.totalSeconds > 0) playerState.remainingSeconds.toFloat() / playerState.totalSeconds else 0f
         )
-        PomodoroColorSelector(
-            selected = timerAccent,
-            onSelected = { timerAccent = it }
-        )
+        if (playerState.hasActiveTimer) {
+            TextButton(
+                onClick = {
+                    playerState.minimized = true
+                    onMinimize()
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Minimizar") }
+        }
+        PomodoroColorSelector(selected = playerState.timerAccent, onSelected = { playerState.timerAccent = it })
         Spacer(Modifier.height(12.dp))
         if (plannedSubjects.isNotEmpty()) {
-            Text("Matéria do Planejamento (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+            Text("Mat\u00e9ria do Planejamento (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
             plannedSubjects.forEach { plan ->
-                PomodoroPlanChip(plan.name, subject == plan.name) {
-                    subject = plan.name
-                    content = ""
+                PomodoroPlanChip(plan.name, playerState.subject == plan.name) {
+                    playerState.subject = plan.name
+                    playerState.content = ""
                 }
             }
             if (topics.isNotEmpty()) {
-                Text("Tópico/conteúdo (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
-                topics.forEach { topic ->
-                    PomodoroPlanChip(topic.name, content == topic.name) { content = topic.name }
-                }
+                Text("T\u00f3pico/conte\u00fado (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+                topics.forEach { topic -> PomodoroPlanChip(topic.name, playerState.content == topic.name) { playerState.content = topic.name } }
             }
         }
-        OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Materia") })
-        OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("Tópico/conteúdo opcional") })
+        OutlinedTextField(value = playerState.subject, onValueChange = { playerState.subject = it }, label = { Text("Mat\u00e9ria") })
+        OutlinedTextField(value = playerState.content, onValueChange = { playerState.content = it }, label = { Text("T\u00f3pico/conte\u00fado opcional") })
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            listOf("Leitura", "Exercício", "Revisão").forEach { type ->
-                PomodoroPlanChip(type, studyType == type, Modifier.weight(1f)) { studyType = type }
+            listOf("Leitura", "Exerc\u00edcio", "Revis\u00e3o").forEach { type ->
+                PomodoroPlanChip(type, playerState.studyType == type, Modifier.weight(1f)) { playerState.studyType = type }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NumberField("Foco", focusMinutes, { focusMinutes = it }, Modifier.weight(1f))
-            NumberField("Pausa", breakMinutes, { breakMinutes = it }, Modifier.weight(1f))
+            NumberField("Foco", playerState.focusMinutes, { playerState.focusMinutes = it }, Modifier.weight(1f))
+            NumberField("Pausa", playerState.breakMinutes, { playerState.breakMinutes = it }, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    val focus = focusMinutes.toIntOrNull() ?: 25
-                    val pause = breakMinutes.toIntOrNull() ?: 5
-                    pomodoroId = 0L
-                    totalSeconds = focus * 60
-                    remainingSeconds = totalSeconds
-                    running = true
-                    status = "Em andamento"
-
-                    if (userId > 0) {
-                        scope.launch {
-                            runCatching { api.startPomodoro(userId, subject.ifBlank { "Pomodoro" }, focus, pause) }
-                                .onSuccess {
-                                    pomodoroId = it.id
-                                    status = "Sincronizado"
-                                }
-                                .onFailure {
-                                    status = "Offline - timer local"
-                                }
-                        }
-                    } else {
-                        status = "Modo convidado - timer local"
+            Button(onClick = {
+                val focus = playerState.focusMinutes.toIntOrNull() ?: 25
+                val pause = playerState.breakMinutes.toIntOrNull() ?: 5
+                playerState.pomodoroId = 0L
+                playerState.totalSeconds = focus * 60
+                playerState.remainingSeconds = playerState.totalSeconds
+                playerState.running = true
+                playerState.minimized = false
+                playerState.showQuickReport = false
+                playerState.status = "Em andamento"
+                if (userId > 0) {
+                    scope.launch {
+                        runCatching { api.startPomodoro(userId, playerState.subject.ifBlank { "Pomodoro" }, focus, pause) }
+                            .onSuccess { playerState.pomodoroId = it.id; playerState.status = "Sincronizado" }
+                            .onFailure { playerState.status = "Offline - timer local" }
                     }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Comecar")
-            }
-            Button(onClick = { if (totalSeconds > 0) running = !running }, modifier = Modifier.weight(1f)) {
-                Text(if (running) "Pausar" else "Continuar")
+                } else {
+                    playerState.status = "Modo convidado - timer local"
+                }
+            }, modifier = Modifier.weight(1f)) { Text("Come\u00e7ar") }
+            Button(onClick = { if (playerState.totalSeconds > 0) playerState.running = !playerState.running }, modifier = Modifier.weight(1f)) {
+                Text(if (playerState.running) "Pausar" else "Continuar")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    if (totalSeconds == 0) return@Button
-                    totalSeconds += 5 * 60
-                    remainingSeconds += 5 * 60
-                    status = "+5 minutos"
-                    if (pomodoroId != 0L) {
-                        scope.launch {
-                            runCatching { api.extendPomodoro(pomodoroId) }
-                                .onFailure { status = "+5 local - sincronizacao pendente" }
+            Button(onClick = {
+                if (playerState.totalSeconds == 0) return@Button
+                playerState.totalSeconds += 5 * 60
+                playerState.remainingSeconds += 5 * 60
+                playerState.status = "+5 minutos"
+                if (playerState.pomodoroId != 0L) scope.launch {
+                    runCatching { api.extendPomodoro(playerState.pomodoroId) }
+                        .onFailure { playerState.status = "+5 local - sincroniza\u00e7\u00e3o pendente" }
+                }
+            }, modifier = Modifier.weight(1f)) { Text("+5") }
+            Button(onClick = {
+                if (playerState.totalSeconds != 0) {
+                    playerState.running = false
+                    playerState.minimized = false
+                    playerState.showQuickReport = true
+                    playerState.status = "Sess\u00e3o conclu\u00edda"
+                }
+            }, modifier = Modifier.weight(1f)) { Text("Concluir") }
+        }
+        if (playerState.showQuickReport) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Sess\u00e3o conclu\u00edda", fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text(
+                        listOf(
+                            playerState.subject.takeIf { it.isNotBlank() }?.let { "Mat\u00e9ria: $it" },
+                            playerState.content.takeIf { it.isNotBlank() }?.let { "T\u00f3pico: $it" },
+                            playerState.activeTaskTitle.takeIf { it.isNotBlank() }?.let { "Tarefa: $it" },
+                            "Tipo: ${playerState.studyType}",
+                            "Tempo: ${(playerState.totalSeconds / 60).coerceAtLeast(1)} min"
+                        ).filterNotNull().joinToString(" \u2022 "),
+                        color = LearnerMutedText,
+                        fontSize = 13.sp
+                    )
+                    Text("Como foi essa sess\u00e3o?", color = LearnerMutedText)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        listOf("Dif\u00edcil", "Ok", "F\u00e1cil").forEach { option ->
+                            PomodoroPlanChip(option, playerState.perceivedDifficulty == option, Modifier.weight(1f)) { playerState.perceivedDifficulty = option }
                         }
                     }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("+5")
-            }
-            Button(
-                onClick = {
-                    if (totalSeconds == 0) return@Button
-                    val completedMinutes = (totalSeconds / 60).coerceAtLeast(1)
-                    running = false
-                    if (pomodoroId != 0L) {
-                        scope.launch {
-                            val notes = listOf(
-                                "Concluido no Pomodoro",
-                                content.takeIf { it.isNotBlank() }?.let { "Topico: $it" },
-                                "Tipo: $studyType"
-                            ).filterNotNull().joinToString(" | ")
-                            runCatching { api.completePomodoro(pomodoroId, notes) }
-                                .onSuccess {
-                                    status = "Salvo"
-                                    onDone()
-                                }
-                                .onFailure {
-                                    savePendingPomodoro(context, subject, completedMinutes, content, studyType)
-                                    pomodoroId = 0L
-                                    status = "Salvo local - sincroniza depois"
-                                }
+                    PomodoroPlanChip(
+                        if (playerState.scheduleReview) "Agendar revis\u00e3o autom\u00e1tica" else "+ Agendar revis\u00e3o?",
+                        playerState.scheduleReview,
+                        Modifier.fillMaxWidth()
+                    ) { playerState.scheduleReview = !playerState.scheduleReview }
+                    OutlinedTextField(
+                        value = playerState.quickNote,
+                        onValueChange = { playerState.quickNote = it },
+                        label = { Text("Anota\u00e7\u00e3o r\u00e1pida (opcional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    fun saveQuickReport(completeTask: Boolean) {
+                        val completedMinutes = (playerState.totalSeconds / 60).coerceAtLeast(1)
+                        val notes = listOf(
+                            "Dificuldade percebida: ${playerState.perceivedDifficulty}",
+                            playerState.activeTaskTitle.takeIf { it.isNotBlank() }?.let { "Tarefa: $it" },
+                            playerState.content.takeIf { it.isNotBlank() }?.let { "T\u00f3pico: $it" },
+                            "Tipo: ${playerState.studyType}",
+                            playerState.quickNote.takeIf { it.isNotBlank() }
+                        ).filterNotNull().joinToString(" | ")
+                        fun finishLocal(recordForMissions: Boolean = false) {
+                            if (completeTask) markStudyTaskCompleted(context, userId, playerState.activeSubjectId, playerState.activeTopicId, playerState.activeTaskId)
+                            if (recordForMissions) recordMissionStudySession(context, userId, completedMinutes, playerState.subject)
+                            playerState.showQuickReport = false
+                            playerState.minimized = false
+                            playerState.quickNote = ""
                         }
-                    } else {
-                        savePendingPomodoro(context, subject, completedMinutes, content, studyType)
-                        status = "Salvo local - sincroniza depois"
+                        fun createReview() {
+                            if (playerState.scheduleReview && userId > 0) scope.launch {
+                                runCatching {
+                                    api.createReview(
+                                        userId,
+                                        "Revisar ${playerState.content.ifBlank { playerState.subject.ifBlank { "sess\u00e3o de estudo" } }}",
+                                        playerState.subject.ifBlank { "Sem mat\u00e9ria" },
+                                        pomodoroReviewDateAfter(reviewDaysForDifficulty(playerState.perceivedDifficulty)),
+                                        topic = playerState.content,
+                                        taskTitle = playerState.activeTaskTitle,
+                                        notes = notes,
+                                        originalDifficulty = playerState.perceivedDifficulty.toDifficultyCode()
+                                    )
+                                }
+                            }
+                        }
+                        if (playerState.pomodoroId != 0L) {
+                            scope.launch {
+                                runCatching { api.completePomodoro(playerState.pomodoroId, notes) }
+                                    .onSuccess { finishLocal(); createReview(); playerState.status = "Salvo"; onDone() }
+                                    .onFailure {
+                                        savePendingPomodoro(context, playerState.subject, completedMinutes, playerState.content, playerState.studyType)
+                                        finishLocal(recordForMissions = true)
+                                        playerState.pomodoroId = 0L
+                                        playerState.status = "Salvo local - sincroniza depois"
+                                    }
+                            }
+                        } else {
+                            savePendingPomodoro(context, playerState.subject, completedMinutes, playerState.content, playerState.studyType)
+                            finishLocal(recordForMissions = true)
+                            playerState.status = "Salvo local - sincroniza depois"
+                        }
                     }
-                },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Concluir")
+                    Button(onClick = { saveQuickReport(false) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar") }
+                    if (playerState.activeTaskId != 0L) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                        Button(onClick = { saveQuickReport(true) }, modifier = Modifier.weight(1f)) { Text("Salvar e concluir tarefa") }
+                        TextButton(onClick = { saveQuickReport(false) }, modifier = Modifier.weight(1f)) { Text("Salvar sem concluir") }
+                    }
+                }
             }
         }
     }
 }
+
+@Composable
+fun PomodoroPictureInPictureContent(state: PomodoroPlayerState) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.horizontalGradient(
+                    listOf(state.timerAccent, state.timerAccent.copy(alpha = 0.78f))
+                )
+            )
+            .padding(12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(Color.White.copy(alpha = 0.18f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = timerText(state.remainingSeconds),
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 16.sp
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = "Foco",
+                    color = Color.White,
+                    fontWeight = FontWeight.Black,
+                    fontSize = 18.sp,
+                    maxLines = 1
+                )
+                Text(
+                    text = listOf(state.subject, state.content)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" / ")
+                        .ifBlank { "Pomodoro" },
+                    color = Color.White.copy(alpha = 0.88f),
+                    fontSize = 12.sp,
+                    maxLines = 1
+                )
+            }
+        }
+    }
+}
+
+data class PomodoroPrefill(
+    val subjectId: Long = 0L,
+    val topicId: Long = 0L,
+    val taskId: Long = 0L,
+    val subject: String,
+    val topic: String,
+    val studyType: String,
+    val taskTitle: String
+)
+
+fun savePomodoroPrefill(context: Context, prefill: PomodoroPrefill) {
+    context.getSharedPreferences("pomodoro_prefill", Context.MODE_PRIVATE).edit().putString("next", JSONObject().put("subjectId", prefill.subjectId).put("topicId", prefill.topicId).put("taskId", prefill.taskId).put("subject", prefill.subject).put("topic", prefill.topic).put("studyType", prefill.studyType).put("taskTitle", prefill.taskTitle).toString()).apply()
+}
+
+private fun loadPomodoroPrefill(context: Context): PomodoroPrefill? {
+    val raw = context.getSharedPreferences("pomodoro_prefill", Context.MODE_PRIVATE).getString("next", null) ?: return null
+    return runCatching { val json = JSONObject(raw); PomodoroPrefill(json.optLong("subjectId"), json.optLong("topicId"), json.optLong("taskId"), json.optString("subject"), json.optString("topic"), json.optString("studyType", "Revisão"), json.optString("taskTitle")) }.getOrNull()
+}
+
+private fun clearPomodoroPrefill(context: Context) { context.getSharedPreferences("pomodoro_prefill", Context.MODE_PRIVATE).edit().remove("next").apply() }
+private fun reviewDaysForDifficulty(difficulty: String): Int = when (difficulty.lowercase(Locale.getDefault())) { "difícil", "dificil", "hard" -> 1; "fácil", "facil", "easy" -> 7; else -> 3 }
+private fun String.toDifficultyCode(): String = when (lowercase(Locale.getDefault())) { "difícil", "dificil" -> "HARD"; "fácil", "facil" -> "EASY"; else -> "OK" }
+private fun pomodoroReviewDateAfter(days: Int): String { val cal = Calendar.getInstance(); cal.add(Calendar.DAY_OF_YEAR, days); return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time) }
 
 private const val PENDING_POMODORO_PREFS = "offline_pomodoro_queue"
 private const val PENDING_POMODORO_KEY = "sessions"

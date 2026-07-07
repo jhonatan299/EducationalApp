@@ -6,8 +6,12 @@ import com.educationalapp.backend.ai.AiQuizDtos.GeneratedQuizResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.GeminiQuizPayload;
 import com.educationalapp.backend.ai.AiQuizDtos.QuestionListRequest;
 import com.educationalapp.backend.ai.AiQuizDtos.QuestionListResponse;
+import com.educationalapp.backend.ai.AiQuizDtos.PlannedRevisionResponse;
+import com.educationalapp.backend.ai.AiQuizDtos.RevisionRoadmapRequest;
+import com.educationalapp.backend.ai.AiQuizDtos.RevisionRoadmapResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.SaveQuestionsRequest;
 import com.educationalapp.backend.ai.AiQuizDtos.SavedQuestionResponse;
+import com.educationalapp.backend.ai.AiQuizDtos.StudyPlanOptionResponse;
 import com.educationalapp.backend.ai.AiQuizDtos.UpdateQuestionRequest;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +22,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -77,6 +82,25 @@ public class AiQuizService {
             throw exception;
         } catch (Exception exception) {
             throw new IllegalStateException("Nao foi possivel gerar perguntas agora. Tente novamente em instantes.");
+        }
+    }
+
+    public RevisionRoadmapResponse generateRevisionRoadmap(RevisionRoadmapRequest request) {
+        if (apiKey.isBlank()) {
+            throw new IllegalStateException("Configure GEMINI_API_KEY no backend para gerar planejamento com IA.");
+        }
+        if (request.subjectName() == null || request.subjectName().isBlank()) {
+            throw new IllegalArgumentException("Materia e obrigatoria para gerar planejamento.");
+        }
+        try {
+            String prompt = buildRevisionRoadmapPrompt(request);
+            String raw = callGemini(prompt);
+            RevisionRoadmapResponse payload = parseRevisionRoadmapPayload(raw);
+            return sanitizeRevisionRoadmap(payload, request);
+        } catch (IllegalArgumentException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new IllegalStateException("Nao foi possivel gerar o planejamento agora. Tente novamente em instantes.");
         }
     }
 
@@ -232,6 +256,95 @@ public class AiQuizService {
                 """.formatted(subject, count, text);
     }
 
+    private String buildRevisionRoadmapPrompt(RevisionRoadmapRequest request) {
+        int durationDays = normalizeBetween(request.durationDays(), 1, 45, 7);
+        int dailyMinutes = normalizeBetween(request.dailyAvailableMinutes(), 15, 180, 30);
+        String topic = request.topicName() == null || request.topicName().isBlank() ? "materia inteira" : request.topicName().trim();
+        LocalDate start = LocalDate.now().plusDays(1);
+        LocalDate end = LocalDate.now().plusDays(durationDays);
+        return """
+                Voce e um assistente de planejamento de estudos.
+                Crie exatamente 2 opcoes de plano de revisao para o usuario.
+
+                Dados do usuario:
+                - Base: %s
+                - Materia: %s
+                - Tema: %s
+                - Planejar materia inteira: %s
+                - Periodo permitido: %s ate %s
+                - Duracao em dias: %d
+                - Tempo disponivel por dia: %d minutos
+                - Horario preferido: %s
+                - Nivel: %s
+                - Objetivo: %s
+
+                Regras:
+                - Responda apenas em JSON valido.
+                - Nao use markdown.
+                - Nao explique fora do JSON.
+                - Crie apenas revisoes programadas, nao aulas completas.
+                - Nao escreva teoria longa.
+                - Se o usuario pediu materia inteira, sugira temas principais.
+                - Se o usuario pediu tema especifico, foque apenas nesse tema.
+                - Nao agende fora do periodo permitido.
+                - Crie no maximo 3 revisoes por dia.
+                - Evite horarios duplicados no mesmo dia.
+                - Prefira revisoes curtas e realistas.
+                - Crie revisao final no ultimo dia se fizer sentido.
+                - Cada revisao deve ter materia, tema, data, horario, duracao, tipo, descricao curta e prioridade.
+                - Tipos permitidos: Revisao rapida, Exercicios, Resumo, Simulado, Releitura, Flashcards, Revisao final.
+                - Opção 1 deve ser equilibrada.
+                - Opção 2 deve ser mais intensiva ou focada em exercicios.
+
+                Formato obrigatorio:
+                {
+                  "options": [
+                    {
+                      "optionNumber": 1,
+                      "title": "",
+                      "description": "",
+                      "estimatedTotalMinutes": 0,
+                      "difficulty": "",
+                      "suggestedTopics": [],
+                      "revisions": [
+                        {
+                          "subjectName": "",
+                          "topicName": "",
+                          "date": "YYYY-MM-DD",
+                          "time": "HH:mm",
+                          "durationMinutes": 0,
+                          "revisionType": "",
+                          "description": "",
+                          "priority": ""
+                        }
+                      ]
+                    },
+                    {
+                      "optionNumber": 2,
+                      "title": "",
+                      "description": "",
+                      "estimatedTotalMinutes": 0,
+                      "difficulty": "",
+                      "suggestedTopics": [],
+                      "revisions": []
+                    }
+                  ]
+                }
+                """.formatted(
+                safe(request.baseType()),
+                safe(request.subjectName()),
+                safe(topic),
+                request.planWholeSubject(),
+                start,
+                end,
+                durationDays,
+                dailyMinutes,
+                safe(request.preferredTime()),
+                safe(request.level()),
+                safe(request.goal())
+        );
+    }
+
     private String callGemini(String prompt) throws Exception {
         String endpoint = "https://generativelanguage.googleapis.com/v1beta/models/"
                 + URLEncoder.encode(model, StandardCharsets.UTF_8)
@@ -284,6 +397,101 @@ public class AiQuizService {
             clean = clean.substring(start, end + 1);
         }
         return objectMapper.readValue(clean, GeminiQuizPayload.class);
+    }
+
+    private RevisionRoadmapResponse parseRevisionRoadmapPayload(String raw) throws Exception {
+        String clean = raw.trim();
+        if (clean.startsWith("```")) {
+            clean = clean.replaceFirst("^```(?:json)?", "").replaceFirst("```$", "").trim();
+        }
+        int start = clean.indexOf('{');
+        int end = clean.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            clean = clean.substring(start, end + 1);
+        }
+        return objectMapper.readValue(clean, RevisionRoadmapResponse.class);
+    }
+
+    private RevisionRoadmapResponse sanitizeRevisionRoadmap(RevisionRoadmapResponse payload, RevisionRoadmapRequest request) {
+        if (payload == null || payload.options() == null || payload.options().size() < 2) {
+            throw new IllegalStateException("Gemini nao gerou duas opcoes de planejamento.");
+        }
+        int durationDays = normalizeBetween(request.durationDays(), 1, 45, 7);
+        LocalDate minDate = LocalDate.now().plusDays(1);
+        LocalDate maxDate = LocalDate.now().plusDays(durationDays);
+        List<StudyPlanOptionResponse> options = payload.options().stream()
+                .limit(2)
+                .map(option -> sanitizeOption(option, request, minDate, maxDate))
+                .toList();
+        if (options.size() != 2 || options.stream().anyMatch(option -> option.revisions().isEmpty())) {
+            throw new IllegalStateException("Gemini nao gerou revisoes suficientes.");
+        }
+        return new RevisionRoadmapResponse(options);
+    }
+
+    private StudyPlanOptionResponse sanitizeOption(StudyPlanOptionResponse option, RevisionRoadmapRequest request, LocalDate minDate, LocalDate maxDate) {
+        List<PlannedRevisionResponse> revisions = option.revisions() == null ? List.of() : option.revisions().stream()
+                .map(revision -> sanitizeRevision(revision, request, minDate, maxDate))
+                .filter(revision -> revision.date() != null && !revision.date().isBlank())
+                .limit(30)
+                .toList();
+        int total = revisions.stream().mapToInt(PlannedRevisionResponse::durationMinutes).sum();
+        return new StudyPlanOptionResponse(
+                option.optionNumber() <= 0 ? 1 : option.optionNumber(),
+                blankToDefault(option.title(), "Plano de revisao"),
+                blankToDefault(option.description(), "Plano curto com revisoes programadas."),
+                total,
+                blankToDefault(option.difficulty(), "Media"),
+                option.suggestedTopics() == null ? List.of() : option.suggestedTopics().stream().filter(topic -> topic != null && !topic.isBlank()).distinct().limit(12).toList(),
+                revisions
+        );
+    }
+
+    private PlannedRevisionResponse sanitizeRevision(PlannedRevisionResponse revision, RevisionRoadmapRequest request, LocalDate minDate, LocalDate maxDate) {
+        LocalDate date = parseDateOrDefault(revision.date(), minDate);
+        if (date.isBefore(minDate)) date = minDate;
+        if (date.isAfter(maxDate)) date = maxDate;
+        int duration = normalizeBetween(revision.durationMinutes(), 10, normalizeBetween(request.dailyAvailableMinutes(), 15, 180, 30), 30);
+        return new PlannedRevisionResponse(
+                blankToDefault(revision.subjectName(), request.subjectName()),
+                blankToDefault(revision.topicName(), request.topicName() == null || request.topicName().isBlank() ? request.subjectName() : request.topicName()),
+                date.toString(),
+                normalizeTime(revision.time(), request.preferredTime()),
+                duration,
+                blankToDefault(revision.revisionType(), "Revisao rapida"),
+                blankToDefault(revision.description(), "Revisar pontos principais."),
+                blankToDefault(revision.priority(), "Media")
+        );
+    }
+
+    private int normalizeBetween(Integer value, int min, int max, int fallback) {
+        int normalized = value == null ? fallback : value;
+        return Math.max(min, Math.min(max, normalized));
+    }
+
+    private String safe(String value) {
+        return value == null || value.isBlank() ? "Nao informado" : value.trim();
+    }
+
+    private String blankToDefault(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value.trim();
+    }
+
+    private LocalDate parseDateOrDefault(String value, LocalDate fallback) {
+        try {
+            return value == null || value.isBlank() ? fallback : LocalDate.parse(value.trim());
+        } catch (Exception ignored) {
+            return fallback;
+        }
+    }
+
+    private String normalizeTime(String value, String fallback) {
+        String candidate = value == null || value.isBlank() ? fallback : value.trim();
+        if (candidate == null || candidate.isBlank() || candidate.equalsIgnoreCase("manha")) return "08:00";
+        if (candidate.equalsIgnoreCase("manhã")) return "08:00";
+        if (candidate.equalsIgnoreCase("tarde")) return "14:00";
+        if (candidate.equalsIgnoreCase("noite")) return "19:00";
+        return candidate.matches("^\\d{2}:\\d{2}$") ? candidate : "19:00";
     }
 
     private List<GeneratedQuestion> sanitizeQuestions(List<GeneratedQuestion> questions, int count) {

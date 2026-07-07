@@ -1,5 +1,13 @@
 *.log
 *.docx
+*.apk
+.env
+.env.*
+*.local.bat
+rodar-backend-local.bat
+backend/rodar-backend-local.bat
+backend/backend-run*.log
+backend/spring-run*.log
 .idea/
 **/.idea/
 **/build/

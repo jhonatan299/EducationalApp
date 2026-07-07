@@ -1,5 +1,9 @@
 package com.frontend.educationalapplication
 
+import android.content.Context
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -29,6 +33,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,9 +87,11 @@ fun ReportReviewsScreen(
     userId: Long,
     sessions: List<StudySessionResponse>,
     reviews: List<ReviewReminderResponse>,
-    onDone: () -> Unit
+    onDone: () -> Unit,
+    onStartStudy: () -> Unit = {},
+    initialSection: Int? = null
 ) {
-    var selectedSection by remember { mutableStateOf<Int?>(null) }
+    var selectedSection by remember { mutableStateOf<Int?>(initialSection) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         if (selectedSection == null) {
@@ -116,6 +123,14 @@ fun ReportReviewsScreen(
                 accent = LearnerTeal,
                 onClick = { selectedSection = 2 }
             )
+            ReportSectionCard(
+                title = "Planejamento inteligente",
+                subtitle = "Crie um roadmap de revis?es com IA",
+                action = "Gerar",
+                selected = selectedSection == 3,
+                accent = Color(0xFF292059),
+                onClick = { selectedSection = 3 }
+            )
         }
 
         selectedSection?.let { section ->
@@ -129,8 +144,9 @@ fun ReportReviewsScreen(
             )
             when (section) {
                 0 -> HistoryScreen(api, userId, sessions, onDone)
-                1 -> ReviewsScreen(api, userId, reviews, onDone)
-                2 -> StudyPlanningScreen(userId = userId)
+                1 -> ReviewsScreen(api, userId, reviews, onDone, onStartStudy)
+                2 -> StudyPlanningScreen(userId = userId, onStartStudy = onStartStudy)
+                3 -> SmartRevisionRoadmapScreen(api = api, userId = userId, onSaved = onDone)
             }
             BottomBackButton(onBack = { selectedSection = null })
         }
@@ -238,19 +254,19 @@ fun HistoryScreen(
     sessions: List<StudySessionResponse>,
     onDone: () -> Unit
 ) {
-    var subject by remember { mutableStateOf("Hist?ria") }
+    var subject by remember { mutableStateOf("") }
     var minutes by remember { mutableStateOf("30") }
     var studyType by remember { mutableStateOf("Leitura") }
     var content by remember { mutableStateOf("") }
-    var objective by remember { mutableStateOf("Entender o tema da aula") }
+    var objective by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
     var learned by remember { mutableStateOf("") }
     var difficulties by remember { mutableStateOf("") }
     var nextAction by remember { mutableStateOf("") }
-    var focusRating by remember { mutableStateOf("4") }
+    var focusRating by remember { mutableStateOf("") }
     var exerciseCount by remember { mutableStateOf("") }
     var correctAnswers by remember { mutableStateOf("") }
-    var scheduleReviews by remember { mutableStateOf(true) }
+    var selectedReviewDays by remember { mutableStateOf(setOf(1, 3, 7, 14)) }
     var filterSubject by remember { mutableStateOf("Todas") }
     var filterTopic by remember { mutableStateOf("Todos") }
     var filterType by remember { mutableStateOf("Todos") }
@@ -261,107 +277,162 @@ fun HistoryScreen(
     val plannedSubjects = remember(userId) { loadStudyPlanningSubjects(context, userId) }
     val selectedPlan = plannedSubjects.firstOrNull { it.name == subject }
     val topics = selectedPlan?.topics.orEmpty()
-    val studyTypes = listOf("Leitura", "Exerc?cio", "Revis?o", "Resumo", "Videoaula", "Simulado", "Outro")
+    val studyTypes = listOf("Leitura", "Exercício", "Revisão", "Resumo", "Videoaula", "Simulado", "Outro")
+    val canSave = (minutes.toIntOrNull() ?: 0) > 0 && studyType.isNotBlank()
+    var reportMode by remember { mutableStateOf<Int?>(null) }
 
-    SectionCard("Relat?rio da sess?o") {
-        if (plannedSubjects.isNotEmpty()) {
-            Text("Usar mat?ria do Planejamento (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
-            plannedSubjects.forEach { plan ->
-                PlanningQuickChip(plan.name, subject == plan.name) {
-                    subject = plan.name
+    if (reportMode == null) {
+        ReportSectionCard(
+            title = "Criar relatório",
+            subtitle = "Registrar uma nova sessão de estudo",
+            action = "Criar",
+            selected = false,
+            accent = Color(0xFF6A63FF),
+            onClick = { reportMode = 0 }
+        )
+        ReportSectionCard(
+            title = "Histórico de relatórios",
+            subtitle = "${sessions.size} sessões registradas",
+            action = "Ver",
+            selected = false,
+            accent = LearnerTeal,
+            onClick = { reportMode = 1 }
+        )
+        return
+    }
+
+    TextButton(onClick = { reportMode = null }) {
+        Text("← Voltar ao menu de relatório")
+    }
+
+
+    if (reportMode == 0) {
+        var selectingSubject by remember { mutableStateOf(false) }
+        var selectingTopic by remember { mutableStateOf(false) }
+        var difficulty by remember { mutableStateOf("Ok") }
+        var imageAttachment by remember { mutableStateOf<Uri?>(null) }
+        var audioAttachment by remember { mutableStateOf<Uri?>(null) }
+        val imagePicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> imageAttachment = uri }
+        val audioPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri -> audioAttachment = uri }
+
+        if (selectingSubject) {
+            SubjectSelectionPanel(
+                context = context,
+                userId = userId,
+                selectedSubject = subject,
+                onSubjectSelected = {
+                    subject = it
                     content = ""
-                }
-            }
-            if (topics.isNotEmpty()) {
-                Text("T?pico/conte?do (opcional)", color = LearnerMutedText, fontWeight = FontWeight.Bold)
-                topics.forEach { topic ->
-                    PlanningQuickChip(topic.name, content == topic.name) { content = topic.name }
-                }
-            }
+                    selectingSubject = false
+                },
+                onBack = { selectingSubject = false }
+            )
+            return
         }
-        OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Mat?ria (opcional)") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = content, onValueChange = { content = it }, label = { Text("T?pico/conte?do (opcional)") }, modifier = Modifier.fillMaxWidth())
-        Text("Tipo de estudo", color = LearnerMutedText, fontWeight = FontWeight.Bold)
-        studyTypes.chunked(2).forEach { row ->
+
+        if (selectingTopic) {
+            TopicSelectionPanel(
+                context = context,
+                userId = userId,
+                subject = subject,
+                selectedTopic = content,
+                onTopicSelected = {
+                    content = it
+                    selectingTopic = false
+                },
+                onBack = { selectingTopic = false }
+            )
+            return
+        }
+
+        SectionCard("Salvar sessão") {
+            Text("Tempo estudado", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+            NumberField("Minutos", minutes, { minutes = it.filter { char -> char.isDigit() }.take(3) }, Modifier.fillMaxWidth())
+
+            SimpleSelectionCard(
+                title = "Matéria",
+                value = subject.ifBlank { "Sem matéria" },
+                action = "Selecionar matéria",
+                onClick = { selectingSubject = true }
+            )
+
+            if (subject.isNotBlank()) {
+                SimpleSelectionCard(
+                    title = "Tema",
+                    value = content.ifBlank { "Pular tema" },
+                    action = "Selecionar tema",
+                    onClick = { selectingTopic = true }
+                )
+            }
+
+            Text("Como foi?", color = LearnerMutedText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                row.forEach { type ->
-                    PlanningQuickChip(type, studyType == type, Modifier.weight(1f)) { studyType = type }
+                listOf("Difícil", "Ok", "Fácil").forEach { option ->
+                    PlanningQuickChip(option, difficulty == option, Modifier.weight(1f)) { difficulty = option }
                 }
             }
-        }
-        NumberField("Minutos", minutes, { minutes = it }, Modifier.fillMaxWidth())
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            NumberField("Exerc?cios", exerciseCount, { exerciseCount = it }, Modifier.weight(1f))
-            NumberField("Acertos", correctAnswers, { correctAnswers = it }, Modifier.weight(1f))
-        }
-        OutlinedTextField(value = objective, onValueChange = { objective = it }, label = { Text("Objetivo antes de estudar") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Anota??es r?pidas") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = learned, onValueChange = { learned = it }, label = { Text("O que aprendi") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = difficulties, onValueChange = { difficulties = it }, label = { Text("Dificuldades") }, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = nextAction, onValueChange = { nextAction = it }, label = { Text("Pr?xima a??o") }, modifier = Modifier.fillMaxWidth())
-        NumberField("Foco de 1 a 5", focusRating, { focusRating = it.take(1) }, Modifier.fillMaxWidth())
-        PlanningQuickChip(
-            text = if (scheduleReviews) "✓ Agendar revisoes: 1, 3, 7 e 14 dias" else "+ Agendar revisoes",
-            selected = scheduleReviews,
-            modifier = Modifier.fillMaxWidth()
-        ) { scheduleReviews = !scheduleReviews }
-        Text("Anexos de imagem/?udio: preparado para fase futura.", color = LearnerMutedText, fontSize = 12.sp)
-        Button(
-            onClick = {
+
+            OutlinedTextField(
+                value = notes,
+                onValueChange = { notes = it },
+                label = { Text("Nota rápida") },
+                placeholder = { Text("Escreva algo que queira lembrar") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Text("Anexos", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text(if (imageAttachment == null) "Imagem" else "Imagem anexada") }
+                Button(onClick = { audioPicker.launch("audio/*") }, modifier = Modifier.weight(1f)) { Text(if (audioAttachment == null) "Áudio" else "Áudio anexado") }
+            }
+            Text("Os anexos ficam vinculados localmente à sessão; upload para nuvem fica para uma próxima fase.", color = LearnerMutedText, fontSize = 12.sp)
+
+            Button(enabled = canSave, onClick = {
+                val savedSubject = subject.ifBlank { "Sem matéria" }
+                val mappedFocus = when (difficulty) {
+                    "Difícil" -> 2
+                    "Fácil" -> 5
+                    else -> 4
+                }
+                val attachmentNotes = listOfNotNull(
+                    imageAttachment?.let { "Imagem anexada: $it" },
+                    audioAttachment?.let { "Áudio anexado: $it" }
+                )
+                val finalNotes = listOf("Dificuldade: $difficulty", notes.takeIf { it.isNotBlank() })
+                    .filterNotNull()
+                    .plus(attachmentNotes)
+                    .joinToString(" | ")
                 val draft = PendingStudySessionDraft(
-                    subject = subject.ifBlank { "Sem mat?ria" },
-                    durationMinutes = minutes.toIntOrNull() ?: 1,
-                    studyType = studyType.toBackendStudyType(),
-                    content = content,
-                    objective = objective,
-                    notes = notes,
-                    learned = learned,
-                    difficulties = difficulties,
-                    nextAction = nextAction,
-                    focusRating = (focusRating.toIntOrNull() ?: 3).coerceIn(1, 5)
+                    savedSubject,
+                    minutes.toIntOrNull() ?: 1,
+                    "REVIEW",
+                    content,
+                    "",
+                    finalNotes,
+                    "",
+                    "",
+                    "",
+                    mappedFocus
                 )
                 scope.apiCall(
-                    action = {
-                        val saved = api.createManualSession(
-                            userId = userId,
-                            subject = draft.subject,
-                            durationMinutes = draft.durationMinutes,
-                            studyType = draft.studyType,
-                            content = draft.content,
-                            objective = draft.objective,
-                            notes = draft.notes,
-                            learned = draft.learned,
-                            difficulties = draft.difficulties,
-                            nextAction = draft.nextAction,
-                            focusRating = draft.focusRating,
-                            exerciseCount = exerciseCount.toIntOrNull(),
-                            correctAnswers = correctAnswers.toIntOrNull()
-                        )
-                        if (scheduleReviews) {
-                            listOf(1, 3, 7, 14).forEach { days ->
-                                api.createReview(
-                                    userId = userId,
-                                    title = "Revisar ${content.ifBlank { subject }}",
-                                    subject = subject.ifBlank { "Sem matéria" },
-                                    dueDate = reviewDateAfter(days)
-                                )
-                            }
-                        }
-                        saved
-                    },
+                    action = { api.createManualSession(userId, draft.subject, draft.durationMinutes, draft.studyType, draft.content, draft.objective, draft.notes, draft.learned, draft.difficulties, draft.nextAction, draft.focusRating, null, null) },
                     onSuccess = {
-                        status = "Relat?rio salvo. Revis?o criada para essa sess?o."
+                        status = "Sessão salva."
                         onDone()
+                        reportMode = 1
                     },
                     onError = {
                         savePendingStudySession(context, draft)
-                        status = "Sem internet: relat?rio salvo localmente para sincronizar depois."
+                        recordMissionStudySession(context, userId, draft.durationMinutes, draft.subject)
+                        status = "Sem internet: sessão salva localmente."
+                        reportMode = 1
                     }
                 )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Salvar sess?o") }
-        status?.let { Text(it, color = LearnerMutedText, fontWeight = FontWeight.Bold) }
+            }, modifier = Modifier.fillMaxWidth()) { Text("Salvar sessão") }
+
+            if (!canSave) Text("Informe o tempo estudado.", color = LearnerCoral, fontSize = 12.sp)
+            status?.let { Text(it, color = LearnerMutedText, fontWeight = FontWeight.Bold) }
+        }
     }
 
     val filteredSessions = sessions.filter { session ->
@@ -371,38 +442,18 @@ fun HistoryScreen(
         val periodOk = session.matchesPeriod(filterPeriod)
         subjectOk && topicOk && typeOk && periodOk
     }
-
-    SectionCard("Hist?rico") {
+    if (reportMode == 1) SectionCard("Histórico de relatórios") {
         Text("Filtros", fontWeight = FontWeight.Black)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(value = filterSubject, onValueChange = { filterSubject = it }, label = { Text("Mat?ria") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = filterTopic, onValueChange = { filterTopic = it }, label = { Text("T?pico") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = filterSubject, onValueChange = { filterSubject = it }, label = { Text("Matéria") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = filterTopic, onValueChange = { filterTopic = it }, label = { Text("Tópico") }, modifier = Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             OutlinedTextField(value = filterType, onValueChange = { filterType = it }, label = { Text("Tipo") }, modifier = Modifier.weight(1f))
-            OutlinedTextField(value = filterPeriod, onValueChange = { filterPeriod = it }, label = { Text("Todos/Semana/M?s/Ano") }, modifier = Modifier.weight(1f))
+            OutlinedTextField(value = filterPeriod, onValueChange = { filterPeriod = it }, label = { Text("Todos/Semana/Mês/Ano") }, modifier = Modifier.weight(1f))
         }
-        if (filteredSessions.isEmpty()) {
-            EmptyStateCard(
-                title = "Nenhum relat?rio encontrado",
-                subtitle = "Salve uma sess?o ou ajuste os filtros."
-            )
-        } else {
-            filteredSessions.forEach { session ->
-                StudySessionReportCard(
-                    session = session,
-                    onDelete = {
-                        scope.apiCall(
-                            action = { api.deleteStudySession(session.id) },
-                            onSuccess = {
-                                status = "Relat?rio eliminado."
-                                onDone()
-                            },
-                            onError = { status = it }
-                        )
-                    }
-                )
-            }
+        if (filteredSessions.isEmpty()) EmptyStateCard("Nenhum relatório encontrado", "Salve uma sessão ou ajuste os filtros.") else filteredSessions.forEach { session ->
+            StudySessionReportCard(session = session, onDelete = { scope.apiCall(action = { api.deleteStudySession(session.id) }, onSuccess = { status = "Relatório eliminado."; onDone() }, onError = { status = it }) })
         }
     }
 }
@@ -432,7 +483,7 @@ private fun StudySessionResponse.matchesPeriod(period: String): Boolean {
     cal.time = now
     when (normalized) {
         "semana" -> cal.add(Calendar.DAY_OF_YEAR, -7)
-        "m?s", "mes" -> cal.add(Calendar.MONTH, -1)
+        "mês", "mes" -> cal.add(Calendar.MONTH, -1)
         "ano" -> cal.add(Calendar.YEAR, -1)
         else -> return true
     }
@@ -443,6 +494,132 @@ private fun reviewDateAfter(days: Int): String {
     val cal = Calendar.getInstance()
     cal.add(Calendar.DAY_OF_YEAR, days)
     return SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(cal.time)
+}
+
+@Composable
+private fun SimpleSelectionCard(
+    title: String,
+    value: String,
+    action: String,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint.copy(alpha = .55f))
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, color = LearnerMutedText, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Text(value, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Black)
+            }
+            Text(action, color = LearnerPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun SubjectSelectionPanel(
+    context: Context,
+    userId: Long,
+    selectedSubject: String,
+    onSubjectSelected: (String) -> Unit,
+    onBack: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var base by remember { mutableStateOf(SubjectBases.HIGH_SCHOOL) }
+    var customName by remember { mutableStateOf("") }
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val subjects = remember(base, query, refreshKey, userId) { searchSubjects(context, base, query, userId) }
+
+    SectionCard("Selecionar matéria") {
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Buscar matéria") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            listOf(SubjectBases.HIGH_SCHOOL, SubjectBases.COMPUTING, SubjectBases.CUSTOM).forEach { option ->
+                PlanningQuickChip(option, base == option, Modifier.weight(1f)) { base = option }
+            }
+        }
+        PlanningQuickChip("Sem matéria", selectedSubject.isBlank(), Modifier.fillMaxWidth()) { onSubjectSelected("") }
+        subjects.forEach { subject ->
+            PlanningQuickChip(subject.name, selectedSubject == subject.name, Modifier.fillMaxWidth()) { onSubjectSelected(subject.name) }
+        }
+        if (subjects.isEmpty()) {
+            EmptyStateCard("Nada encontrado", "Tente outra busca ou crie uma matéria personalizada.")
+        }
+        Text("Criar matéria", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = customName,
+                onValueChange = { customName = it },
+                label = { Text("Nova matéria") },
+                modifier = Modifier.weight(1f)
+            )
+            Button(onClick = {
+                addCustomSubjectToPlanning(context, userId, customName)
+                onSubjectSelected(customName.trim())
+                customName = ""
+                refreshKey += 1
+            }, enabled = customName.trim().isNotBlank()) { Text("+") }
+        }
+        BottomBackButton(onBack = onBack)
+    }
+}
+
+@Composable
+private fun TopicSelectionPanel(
+    context: Context,
+    userId: Long,
+    subject: String,
+    selectedTopic: String,
+    onTopicSelected: (String) -> Unit,
+    onBack: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    var customTopic by remember { mutableStateOf("") }
+    var refreshKey by remember { mutableIntStateOf(0) }
+    val topics = remember(subject, query, refreshKey, userId) { searchTopics(context, subject, query, userId) }
+
+    SectionCard("Selecionar tema") {
+        Text(subject, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            label = { Text("Buscar tema") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        PlanningQuickChip("Pular tema", selectedTopic.isBlank(), Modifier.fillMaxWidth()) { onTopicSelected("") }
+        topics.forEach { topic ->
+            PlanningQuickChip(topic, selectedTopic == topic, Modifier.fillMaxWidth()) { onTopicSelected(topic) }
+        }
+        if (topics.isEmpty()) {
+            EmptyStateCard("Nenhum tema encontrado", "Crie um tema personalizado para essa matéria.")
+        }
+        Text("Criar tema", color = LearnerMutedText, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = customTopic,
+                onValueChange = { customTopic = it },
+                label = { Text("Novo tema") },
+                modifier = Modifier.weight(1f)
+            )
+            Button(onClick = {
+                addCustomTopicToPlanning(context, userId, subject, customTopic)
+                onTopicSelected(customTopic.trim())
+                customTopic = ""
+                refreshKey += 1
+            }, enabled = customTopic.trim().isNotBlank()) { Text("+") }
+        }
+        BottomBackButton(onBack = onBack)
+    }
 }
 
 @Composable
@@ -460,28 +637,28 @@ private fun StudySessionReportCard(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = session.subject.ifBlank { "Sem mat?ria" },
+                text = session.subject.ifBlank { "Sem matéria" },
                 fontWeight = FontWeight.Black,
                 fontSize = 17.sp
             )
             Text(
-                text = session.content ?: "Sem t?pico",
+                text = session.content ?: "Sem tópico",
                 color = LearnerMutedText,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "${session.durationMinutes} min ? ${session.studyType.toStudyTypeLabel() ?: session.source.toSessionSourceLabel()} ? foco ${session.focusRating ?: "-"}",
+                text = "${session.durationMinutes} min • ${session.studyType.toStudyTypeLabel() ?: session.source.toSessionSourceLabel()} • foco ${session.focusRating ?: "-"}",
                 color = LearnerMutedText
             )
             if (session.exerciseCount != null || session.correctAnswers != null) {
                 Text(
-                    text = "Exerc?cios: ${session.correctAnswers ?: 0}/${session.exerciseCount ?: 0}",
+                    text = "Exercícios: ${session.correctAnswers ?: 0}/${session.exerciseCount ?: 0}",
                     color = LearnerTeal,
                     fontWeight = FontWeight.Bold
                 )
             }
             Text(
-                text = "Pr?xima a??o: ${session.nextAction ?: "nenhuma"}",
+                text = "Próxima ação: ${session.nextAction ?: "nenhuma"}",
                 color = LearnerMutedText,
                 fontSize = 13.sp
             )
@@ -489,7 +666,7 @@ private fun StudySessionReportCard(
                 onClick = onDelete,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Eliminar relat?rio")
+                Text("Eliminar relatório")
             }
         }
     }

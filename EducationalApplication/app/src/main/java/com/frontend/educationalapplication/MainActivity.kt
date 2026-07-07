@@ -1,6 +1,10 @@
 package com.frontend.educationalapplication
 
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
+import android.util.Rational
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,6 +22,8 @@ import com.frontend.educationalapplication.network.AuthResponse
 import com.frontend.educationalapplication.network.EducationalApi
 import com.frontend.educationalapplication.ui.theme.EducationalApplicationTheme
 class MainActivity : ComponentActivity() {
+    private var isInPomodoroPictureInPicture by mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -25,14 +31,37 @@ class MainActivity : ComponentActivity() {
             // setContent is the Compose version of "put the UI on the screen".
             // Everything inside this block describes what Android should draw.
             EducationalApplicationTheme {
-                StudyApp()
+                StudyApp(
+                    isInPictureInPictureMode = isInPomodoroPictureInPicture,
+                    onEnterPictureInPicture = { enterPomodoroPictureInPicture() }
+                )
             }
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        isInPomodoroPictureInPicture = isInPictureInPictureMode
+    }
+
+    private fun enterPomodoroPictureInPicture() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(2, 1))
+                .build()
+            enterPictureInPictureMode(params)
         }
     }
 }
 
 @Composable
-fun StudyApp() {
+fun StudyApp(
+    isInPictureInPictureMode: Boolean = false,
+    onEnterPictureInPicture: () -> Unit = {}
+) {
     // remember keeps the same object/value while Compose redraws this screen.
     // Without remember, Compose could recreate the API client on every redraw.
     val api = remember { EducationalApi() }
@@ -41,7 +70,7 @@ fun StudyApp() {
     // mutableStateOf is like a variable that also tells Compose: "redraw when I change".
     var user by remember {
         mutableStateOf<AuthResponse?>(
-            if (BuildConfig.DEMO_MODE) AuthResponse(0L, "Professora", "demo@local", 120) else null
+            if (BuildConfig.DEMO_MODE) AuthResponse(1001L, "João", "joao.demo@local", 180) else null
         )
     }
     var error by remember { mutableStateOf<String?>(null) }
@@ -108,6 +137,8 @@ fun StudyApp() {
                 api = api,
                 user = user!!,
                 isGuest = isGuest,
+                isInPictureInPictureMode = isInPictureInPictureMode,
+                onEnterPictureInPicture = onEnterPictureInPicture,
                 onUserUpdated = { user = it },
                 onLogout = {
                     user = null
