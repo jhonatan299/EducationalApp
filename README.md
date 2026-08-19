@@ -108,28 +108,7 @@ Responsabilidades:
 
 Lista detalhada: [docs/FEATURES.md](docs/FEATURES.md)
 
-## Configuração
-
-### Backend
-
-Porta padrão:
-
-```text
-8080
-```
-
-Banco padrão:
-
-```text
-H2 em memória
-```
-
-Variável de ambiente usada pelo backend para recursos de IA:
-
-```text
-GEMINI_API_KEY
-```
-
+#
 ### Android
 
 Configurações via Gradle properties:
