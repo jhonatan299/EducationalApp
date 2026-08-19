@@ -164,10 +164,6 @@ cd backend
 .\mvnw.cmd -DskipTests package
 ```
 
-## IA
-
-A integração com IA é feita pelo backend. A chave não fica no APK.
-
 Fluxo:
 
 ```text
@@ -181,16 +177,6 @@ POST /api/ai/quiz-from-text
 POST /api/ai/revision-roadmap
 ```
 
-## Segurança
-
-Não versionar:
-
-- chaves de API;
-- `.env`;
-- arquivos `.bat` locais com chave;
-- logs;
-- APKs gerados;
-- arquivos locais do Android Studio.
 
 O `.gitignore` já cobre esses casos principais.
 
