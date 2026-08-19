@@ -129,25 +129,7 @@ cd backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Android debug APK:
 
-```powershell
-cd EducationalApplication
-.\gradlew.bat :app:assembleDebug
-```
-
-Backend package:
-
-```powershell
-cd backend
-.\mvnw.cmd -DskipTests package
-```
-
-Fluxo:
-
-```text
-Android app -> Backend -> Gemini API
-```
 
 Endpoints principais:
 
@@ -156,8 +138,7 @@ POST /api/ai/quiz-from-text
 POST /api/ai/revision-roadmap
 ```
 
-
-O `.gitignore` já cobre esses casos principais.
+s.
 
 ## Status
 
