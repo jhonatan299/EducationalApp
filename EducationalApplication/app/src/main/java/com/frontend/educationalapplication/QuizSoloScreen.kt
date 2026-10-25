@@ -51,6 +51,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDateTime
 import kotlin.math.roundToInt
+import com.frontend.educationalapplication.ui.theme.LearnerText
 
 enum class QuestionCategory { GENERAL, PROGRAMMING, DATABASE, MATH, HISTORY, SCIENCE, CUSTOM }
 
@@ -361,7 +362,7 @@ private fun QuizSoloEmpty(onRetry: () -> Unit) {
         title = "Nenhuma pergunta salva ainda.",
         subtitle = "Gere perguntas, salve no Banco de Perguntas e depois volte aqui para jogar."
     )
-    Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
+    Button(shape = MaterialTheme.shapes.small, onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
 }
 
 @Composable
@@ -382,8 +383,8 @@ private fun QuizSoloStart(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Fonte das perguntas", fontWeight = FontWeight.Black, fontSize = 18.sp)
@@ -399,8 +400,8 @@ private fun QuizSoloStart(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -421,7 +422,7 @@ private fun QuizSoloStart(
                 Text("Recompensa máxima: $estimatedReward pontos", color = LearnerTeal, fontWeight = FontWeight.Black)
                 Text("A rodada usa perguntas salvas no Banco de Perguntas.", color = LearnerMutedText, fontSize = 12.sp)
             }
-            Button(onClick = onStart, enabled = state.questions.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Começar") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onStart, enabled = state.questions.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Começar") }
         }
     }
 }
@@ -429,12 +430,12 @@ private fun QuizSoloStart(
 @Composable
 private fun QuizSourceCard(source: QuizQuestionSource, selected: Boolean, onClick: () -> Unit) {
     val background = if (selected) LearnerPrimary else LearnerPrimaryTint
-    val titleColor = if (selected) Color.White else Color(0xFF111827)
+    val titleColor = if (selected) Color.White else LearnerText
     val subtitleColor = if (selected) Color.White.copy(alpha = .82f) else LearnerMutedText
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable(onClick = onClick)
             .padding(14.dp),
@@ -471,12 +472,14 @@ private fun QuizSoloQuestion(
         progress = { progress.coerceIn(0f, 1f) },
         modifier = Modifier.fillMaxWidth().height(9.dp).clip(RoundedCornerShape(99.dp)),
         color = LearnerPrimary,
-        trackColor = LearnerPrimaryTint
+        trackColor = LearnerPrimaryTint,
+        gapSize = 0.dp,
+        drawStopIndicator = {}
     )
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Text(question.questionText, fontWeight = FontWeight.Black, fontSize = 20.sp)
@@ -496,7 +499,7 @@ private fun QuizSoloQuestion(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(background)
                         .clickable(enabled = !answered) { onSelect(index) }
                         .padding(14.dp)
@@ -515,7 +518,7 @@ private fun QuizSoloQuestion(
                     color = if (won) LearnerTeal else LearnerCoral,
                     fontWeight = FontWeight.Black
                 )
-                Button(onClick = onNext, modifier = Modifier.fillMaxWidth()) {
+                Button(shape = MaterialTheme.shapes.small, onClick = onNext, modifier = Modifier.fillMaxWidth()) {
                     Text(if (state.currentIndex == state.questions.lastIndex) "Finalizar" else "Próxima")
                 }
             }
@@ -535,8 +538,8 @@ private fun QuizSoloResult(
     Text("Quiz concluído", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -553,8 +556,8 @@ private fun QuizSoloResult(
             Text("Erros: ${state.wrongAnswers}", color = LearnerMutedText)
             Text("Pontos ganhos: ${state.earnedCoins}", color = LearnerTeal, fontWeight = FontWeight.Black, fontSize = 20.sp)
             rewardMessage?.let { Text(it, color = LearnerMutedText, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center) }
-            Button(onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Jogar novamente") }
-            Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar para Jogos") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onRestart, modifier = Modifier.fillMaxWidth()) { Text("Jogar novamente") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onBack, modifier = Modifier.fillMaxWidth()) { Text("Voltar para Jogos") }
         }
     }
 }
@@ -563,8 +566,8 @@ private fun QuizSoloResult(
 private fun QuizSoloMetric(value: String, label: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(vertical = 12.dp, horizontal = 8.dp),

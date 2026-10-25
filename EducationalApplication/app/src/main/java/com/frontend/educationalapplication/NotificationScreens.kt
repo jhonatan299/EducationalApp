@@ -75,6 +75,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import com.frontend.educationalapplication.ui.theme.LearnerText
 @Composable
 fun NotificationsScreen(
     reviews: List<ReviewReminderResponse>,
@@ -174,7 +175,7 @@ fun EmptyNotificationIllustration() {
             center = Offset(size.width * 0.50f, size.height * 0.62f)
         )
         drawCircle(
-            color = Color(0xFF111827),
+            color = LearnerText,
             radius = size.minDimension * 0.06f,
             center = Offset(size.width * 0.50f, size.height * 0.40f)
         )
@@ -215,9 +216,9 @@ fun EmptyNotificationIllustration() {
 fun NotificationItemCard(title: String, subtitle: String, accent: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -229,7 +230,7 @@ fun NotificationItemCard(title: String, subtitle: String, accent: Color) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(accent.copy(alpha = 0.14f)),
                 contentAlignment = Alignment.Center
             ) {

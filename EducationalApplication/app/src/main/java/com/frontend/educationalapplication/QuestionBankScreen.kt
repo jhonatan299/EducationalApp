@@ -42,6 +42,7 @@ import com.frontend.educationalapplication.ui.theme.LearnerMutedText
 import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
 import kotlinx.coroutines.launch
+import com.frontend.educationalapplication.ui.theme.LearnerDeepIndigo
 
 @Composable
 fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
@@ -147,7 +148,7 @@ fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
                     label = { Text("Buscar nesta lista") },
                     singleLine = true
                 )
-                Button(onClick = { load() }) { Text("Atualizar") }
+                Button(shape = MaterialTheme.shapes.small, onClick = { load() }) { Text("Atualizar") }
             }
 
             if (!loading && visibleQuestions.isEmpty()) {
@@ -242,8 +243,8 @@ private fun QuestionListHub(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Listas", fontWeight = FontWeight.Black, fontSize = 20.sp)
@@ -265,7 +266,7 @@ private fun QuestionListHub(
                         title = list.name,
                         subtitle = "Lista personalizada",
                         count = list.questionCount,
-                        accent = Color(0xFF292059),
+                        accent = LearnerDeepIndigo,
                         onClick = { onOpenList(list) },
                         onDelete = { onDeleteList(list) }
                     )
@@ -281,7 +282,7 @@ private fun QuestionListHub(
                     label = { Text("Nome da lista") },
                     singleLine = true
                 )
-                Button(onClick = onCreateList) { Text("Criar") }
+                Button(shape = MaterialTheme.shapes.small, onClick = onCreateList) { Text("Criar") }
             }
         }
     }
@@ -298,7 +299,7 @@ private fun QuestionListCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f))
     ) {
         Row(
@@ -308,7 +309,7 @@ private fun QuestionListCard(
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(accent)
                     .padding(horizontal = 14.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center
@@ -330,7 +331,7 @@ private fun QuestionListCard(
 private fun QuestionListHeader(title: String, subtitle: String, onBack: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = LearnerPrimary)
     ) {
         Row(
@@ -342,7 +343,7 @@ private fun QuestionListHeader(title: String, subtitle: String, onBack: () -> Un
                 Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
                 Text(subtitle, color = Color.White.copy(alpha = 0.78f), fontSize = 13.sp)
             }
-            Button(onClick = onBack) { Text("Listas") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onBack) { Text("Listas") }
         }
     }
 }
@@ -359,8 +360,8 @@ private fun SavedQuestionCard(
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(question.question, fontWeight = FontWeight.Black, fontSize = 16.sp)
@@ -387,10 +388,10 @@ private fun SavedQuestionCard(
             }
             OutlinedTextField(value = subject, onValueChange = { subject = it }, label = { Text("Tema") }, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = { onUpdate(subject) }, modifier = Modifier.weight(1f)) {
+                Button(shape = MaterialTheme.shapes.small, onClick = { onUpdate(subject) }, modifier = Modifier.weight(1f)) {
                     Text("Salvar")
                 }
-                Button(onClick = onDelete, modifier = Modifier.weight(1f)) {
+                Button(shape = MaterialTheme.shapes.small, onClick = onDelete, modifier = Modifier.weight(1f)) {
                     Text("Eliminar")
                 }
             }
@@ -403,7 +404,7 @@ private fun QuestionListChip(text: String, selected: Boolean, onClick: () -> Uni
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),

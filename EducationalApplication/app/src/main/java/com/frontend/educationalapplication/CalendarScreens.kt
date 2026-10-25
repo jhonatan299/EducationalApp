@@ -184,7 +184,7 @@ fun CalendarActionButton(
     Box(
         modifier = Modifier
             .size(42.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
@@ -210,7 +210,7 @@ fun CalendarModeSelector(selectedMode: Int, onModeSelected: (Int) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.surface)
             .padding(5.dp),
         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -220,7 +220,7 @@ fun CalendarModeSelector(selectedMode: Int, onModeSelected: (Int) -> Unit) {
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(if (selected) LearnerPrimary else Color.Transparent)
                     .clickable { onModeSelected(index) }
                     .padding(vertical = 10.dp),
@@ -333,7 +333,7 @@ fun MonthDayCell(
     Box(
         modifier = modifier
             .height(62.dp)
-            .clip(RoundedCornerShape(15.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(background)
             .clickable(onClick = onClick)
             .padding(5.dp),
@@ -402,7 +402,7 @@ fun WeekCalendarView(
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .clip(RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(10.dp))
                         .background(if (selected) LearnerPrimary else MaterialTheme.colorScheme.background)
                         .clickable { onDateSelected(date) }
                         .padding(vertical = 10.dp),
@@ -484,7 +484,7 @@ fun AgendaCalendarView(calendar: List<CalendarDayResponse>, reviewsByDate: Map<S
 fun CalendarReviewEventCard(review: ReviewReminderResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = LearnerYellow.copy(alpha = 0.16f)),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -524,7 +524,7 @@ fun CalendarReviewEventCard(review: ReviewReminderResponse) {
 fun CalendarStudyEventCard(day: CalendarDayResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = LearnerPrimary),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {

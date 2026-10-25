@@ -98,7 +98,7 @@ fun SectionHeader(title: String, subtitle: String) {
 fun SummaryCard(title: String, subtitle: String, accentColor: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = accentColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
@@ -139,9 +139,9 @@ fun SummaryCard(title: String, subtitle: String, accentColor: Color) {
 fun EmptyStateCard(title: String, subtitle: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -259,9 +259,9 @@ fun ErrorStateCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(26.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier
@@ -285,7 +285,7 @@ fun ErrorStateCard(
             )
             ErrorCausePill(error.cause)
             onRetry?.let {
-                Button(onClick = it, modifier = Modifier.fillMaxWidth()) {
+                Button(shape = MaterialTheme.shapes.small, onClick = it, modifier = Modifier.fillMaxWidth()) {
                     Text(error.actionLabel)
                 }
             }
@@ -435,9 +435,9 @@ private fun ErrorIllustration(cause: FriendlyErrorCause) {
 fun CalendarDayCard(day: CalendarDayResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier
@@ -449,7 +449,7 @@ fun CalendarDayCard(day: CalendarDayResponse) {
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(10.dp))
                     .background(LearnerPrimaryTint),
                 contentAlignment = Alignment.Center
             ) {
@@ -507,9 +507,9 @@ fun ReviewReminderCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -526,8 +526,8 @@ fun ReviewReminderCard(
             Text("Revisão para: ${review.dueDate} • ${review.reviewStatusLabel()}", color = LearnerPrimary, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
             review.originalDifficulty?.let { Text("Dificuldade original: ${it.toReviewDifficultyLabel()}", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
             review.notes?.takeIf { it.isNotBlank() }?.let { Text("Anotação: $it", color = LearnerMutedText, style = MaterialTheme.typography.bodySmall) }
-            Button(enabled = !review.completed, onClick = onStartReview, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))) { Text("Iniciar revisão") }
-            Button(enabled = !review.completed, onClick = onComplete, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(14.dp))) { Text(if (review.completed) "Revisada" else "Marcar como concluída") }
+            Button(shape = MaterialTheme.shapes.small, enabled = !review.completed, onClick = onStartReview, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(10.dp))) { Text("Iniciar revisão") }
+            Button(shape = MaterialTheme.shapes.small, enabled = !review.completed, onClick = onComplete, modifier = Modifier.fillMaxWidth().height(46.dp).clip(RoundedCornerShape(10.dp))) { Text(if (review.completed) "Revisada" else "Marcar como concluída") }
             TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) { Text("Eliminar revisão", color = LearnerCoral, fontWeight = FontWeight.Bold) }
         }
     }
@@ -547,19 +547,19 @@ private fun String.toReviewDifficultyLabel(): String = when (uppercase(Locale.ge
 
 @Composable
 fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    // Reusable card wrapper so all sections share the same layout style.
-    Card(
-        shape = RoundedCornerShape(8.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.fillMaxWidth()
+    // Flat section (heading + content) so cards placed inside it are never nested in another card.
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            content()
-        }
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        content()
     }
 }
 

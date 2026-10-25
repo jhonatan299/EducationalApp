@@ -76,6 +76,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import com.frontend.educationalapplication.ui.theme.LearnerText
 @Composable
 fun OnboardingScreen(
     onLoginClick: () -> Unit,
@@ -141,7 +142,7 @@ fun OnboardingScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Criar conta", fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
                 }
@@ -150,7 +151,7 @@ fun OnboardingScreen(
                     modifier = Modifier
                         .weight(1f)
                         .height(52.dp),
-                    shape = RoundedCornerShape(14.dp)
+                    shape = RoundedCornerShape(10.dp)
                 ) {
                     Text("Entrar", fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
                 }
@@ -185,7 +186,7 @@ fun IntroIllustration(accent: Color, page: Int) {
             size = Size(size.width * 0.28f, size.height * 0.32f),
             cornerRadius = CornerRadius(24f, 24f)
         )
-        drawCircle(Color(0xFF111827), radius = 22f, center = Offset(size.width * 0.5f, size.height * 0.26f))
+        drawCircle(LearnerText, radius = 22f, center = Offset(size.width * 0.5f, size.height * 0.26f))
         when (page) {
             0 -> {
                 drawLine(LearnerPrimary, Offset(size.width * 0.28f, size.height * 0.24f), Offset(size.width * 0.38f, size.height * 0.34f), strokeWidth = 5f)
@@ -220,7 +221,7 @@ fun PrimaryAuthButton(text: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(10.dp)
     ) {
         Text(text, fontWeight = FontWeight.Bold, fontFamily = CircularDisplayFamily)
     }
@@ -325,7 +326,7 @@ fun LoginScreen(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(16.dp))
-        Button(
+        Button(shape = MaterialTheme.shapes.small,
             onClick = { onLogin(email, password) },
             modifier = Modifier.fillMaxWidth()
         ) {

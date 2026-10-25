@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -81,6 +82,7 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import com.frontend.educationalapplication.ui.theme.LearnerDeepIndigo
 @Composable
 fun ReportReviewsScreen(
     api: EducationalApi,
@@ -104,7 +106,7 @@ fun ReportReviewsScreen(
                 subtitle = "Anote o que estudou",
                 action = "Abrir",
                 selected = selectedSection == 0,
-                accent = Color(0xFF6A63FF),
+                accent = LearnerPrimary,
                 onClick = { selectedSection = 0 }
             )
             ReportSectionCard(
@@ -128,7 +130,7 @@ fun ReportReviewsScreen(
                 subtitle = "Crie um plano de revisões com IA",
                 action = "Gerar",
                 selected = selectedSection == 3,
-                accent = Color(0xFF292059),
+                accent = LearnerDeepIndigo,
                 onClick = { selectedSection = 3 }
             )
         }
@@ -177,7 +179,7 @@ fun ReportSectionCard(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(136.dp)
+            .heightIn(min = 136.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(if (selected) accent else accent.copy(alpha = 0.82f))
             .clickable(onClick = onClick)
@@ -210,7 +212,7 @@ fun ReportSectionCard(
             )
         }
         Column(
-            modifier = Modifier.align(Alignment.TopStart),
+            modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.56f),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Text(
@@ -287,7 +289,7 @@ fun HistoryScreen(
             subtitle = "Registrar uma nova sessão de estudo",
             action = "Criar",
             selected = false,
-            accent = Color(0xFF6A63FF),
+            accent = LearnerPrimary,
             onClick = { reportMode = 0 }
         )
         ReportSectionCard(
@@ -382,12 +384,12 @@ fun HistoryScreen(
 
             Text("Anexos", color = LearnerMutedText, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                Button(onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text(if (imageAttachment == null) "Imagem" else "Imagem anexada") }
-                Button(onClick = { audioPicker.launch("audio/*") }, modifier = Modifier.weight(1f)) { Text(if (audioAttachment == null) "Áudio" else "Áudio anexado") }
+                Button(shape = MaterialTheme.shapes.small, onClick = { imagePicker.launch("image/*") }, modifier = Modifier.weight(1f)) { Text(if (imageAttachment == null) "Imagem" else "Imagem anexada") }
+                Button(shape = MaterialTheme.shapes.small, onClick = { audioPicker.launch("audio/*") }, modifier = Modifier.weight(1f)) { Text(if (audioAttachment == null) "Áudio" else "Áudio anexado") }
             }
             Text("Os anexos ficam vinculados localmente à sessão; upload para nuvem fica para uma próxima fase.", color = LearnerMutedText, fontSize = 12.sp)
 
-            Button(enabled = canSave, onClick = {
+            Button(shape = MaterialTheme.shapes.small, enabled = canSave, onClick = {
                 val savedSubject = subject.ifBlank { "Sem matéria" }
                 val mappedFocus = when (difficulty) {
                     "Difícil" -> 2
@@ -462,7 +464,7 @@ fun HistoryScreen(
 private fun PlanningQuickChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),
@@ -505,7 +507,7 @@ private fun SimpleSelectionCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint.copy(alpha = .55f))
     ) {
         Row(
@@ -563,7 +565,7 @@ private fun SubjectSelectionPanel(
                 label = { Text("Nova matéria") },
                 modifier = Modifier.weight(1f)
             )
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 addCustomSubjectToPlanning(context, userId, customName)
                 onSubjectSelected(customName.trim())
                 customName = ""
@@ -611,7 +613,7 @@ private fun TopicSelectionPanel(
                 label = { Text("Novo tema") },
                 modifier = Modifier.weight(1f)
             )
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 addCustomTopicToPlanning(context, userId, subject, customTopic)
                 onTopicSelected(customTopic.trim())
                 customTopic = ""
@@ -629,8 +631,8 @@ private fun StudySessionReportCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -662,7 +664,7 @@ private fun StudySessionReportCard(
                 color = LearnerMutedText,
                 fontSize = 13.sp
             )
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 onClick = onDelete,
                 modifier = Modifier.fillMaxWidth()
             ) {

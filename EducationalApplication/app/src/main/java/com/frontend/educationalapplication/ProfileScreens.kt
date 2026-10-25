@@ -75,7 +75,7 @@ fun ProfileScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Row(
@@ -106,7 +106,7 @@ fun ProfileScreen(
             label = { Text("Seu nome") },
             singleLine = true
         )
-        Button(
+        Button(shape = MaterialTheme.shapes.small,
             onClick = {
                 if (name.trim().isBlank() || saving) return@Button
                 saving = true
@@ -212,7 +212,7 @@ private fun ProfileToggleRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onCheckedChange(!checked) },
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
@@ -240,7 +240,7 @@ private fun ProfileActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
@@ -288,7 +288,7 @@ fun ChangePasswordScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
         ) {
             Column(
@@ -358,7 +358,7 @@ fun ChangePasswordScreen(
 
         message?.let { Text(it, color = LearnerMutedText, style = MaterialTheme.typography.bodyMedium) }
 
-        Button(
+        Button(shape = MaterialTheme.shapes.small,
             onClick = {
                 message = "Senha atualizada nesta demo. Em uma conta real, essa alteração será salva com segurança."
             },
@@ -376,7 +376,7 @@ fun ChangePasswordScreen(
 private fun ProfileEmptyNotification() {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
     ) {
         Text(

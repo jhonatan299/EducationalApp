@@ -80,6 +80,9 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import com.frontend.educationalapplication.ui.theme.LearnerCardVariant
+import com.frontend.educationalapplication.ui.theme.LearnerDeepIndigo
+import com.frontend.educationalapplication.ui.theme.LearnerPink
 @Composable
 fun GoalsMissionsScreen(
     api: EducationalApi,
@@ -125,7 +128,9 @@ fun GoalsScreen(goals: List<GoalResponse>) {
             )
             LinearProgressIndicator(
                 progress = { (goal.progressPercent / 100.0).toFloat() },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                gapSize = 0.dp,
+                drawStopIndicator = {}
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -139,14 +144,14 @@ fun MissionsScreen(
     onClaimed: (Int) -> Unit
 ) {
     // Missions can be claimed when the backend says they are completed.
-    SectionCard("Missoes") {
+    SectionCard("Missões") {
         val scope = rememberCoroutineScope()
         missions.forEach { mission ->
             ListLine(
                 title = mission.title,
                 detail = "${mission.progressMinutes}/${mission.targetMinutes} min - ${mission.rewardCoins} pontos"
             )
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 enabled = mission.completed && !mission.claimed,
                 onClick = {
                     scope.apiCall(
@@ -178,7 +183,7 @@ fun ProgressDashboard(
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         RankingMenuCard(onOpenRanking = onOpenRanking)
         SectionHeader(
-            title = "Estatisticas",
+            title = "Estatísticas",
             subtitle = "Veja como o seu estudo evolui ao longo da semana"
         )
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -198,13 +203,13 @@ fun ProgressDashboard(
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             StatisticMetricCard(
                 value = "$subjects",
-                label = "Materias estudadas",
+                label = "Matérias estudadas",
                 accent = LearnerTeal,
                 modifier = Modifier.weight(1f)
             )
             StatisticMetricCard(
                 value = "$completedGoals",
-                label = "Metas concluidas",
+                label = "Metas concluídas",
                 accent = LearnerYellow,
                 modifier = Modifier.weight(1f)
             )
@@ -214,7 +219,7 @@ fun ProgressDashboard(
         if (hasStudyData) {
             WeeklyStudyChart(progress!!.byDay.map { it.date.takeLast(5) to it.minutes })
             ProgressBreakdownCard(
-                title = "Tempo por materia",
+                title = "Tempo por matéria",
                 items = progress.bySubject.map { it.subject to it.minutes },
                 max = totalMinutes.coerceAtLeast(1),
                 accent = LearnerPrimary
@@ -232,8 +237,8 @@ fun ProgressDashboard(
 private fun RankingMenuCard(onOpenRanking: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenRanking),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF292059)),
-        shape = RoundedCornerShape(24.dp)
+        colors = CardDefaults.cardColors(containerColor = LearnerDeepIndigo),
+        shape = RoundedCornerShape(10.dp)
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -310,7 +315,7 @@ fun RankingDashboard(api: EducationalApi, userId: Long, onBack: () -> Unit) {
         }
         Card(
             colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF2B5)),
-            shape = RoundedCornerShape(20.dp), modifier = Modifier.fillMaxWidth()
+            shape = RoundedCornerShape(10.dp), modifier = Modifier.fillMaxWidth()
         ) {
             Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 RankingHeaderBadge()
@@ -336,7 +341,7 @@ private enum class RankingPeriod { Week, AllTime }
 @Composable
 private fun RankingPeriodToggle(selected: RankingPeriod, onSelected: (RankingPeriod) -> Unit) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(Color(0xFFEDEBFA), RoundedCornerShape(14.dp)).padding(4.dp),
+        modifier = Modifier.fillMaxWidth().background(LearnerCardVariant, RoundedCornerShape(10.dp)).padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         RankingPeriod.values().forEach { period ->
@@ -372,7 +377,7 @@ private fun RankingPositionBadge(position: Int) {
         1 -> Color(0xFFFFD54F)
         2 -> Color(0xFFC9CED6)
         3 -> Color(0xFFD89A5B)
-        else -> Color(0xFFEDEBFA)
+        else -> LearnerCardVariant
     }
     val textColor = if (position <= 3) Color(0xFF2E2A1F) else LearnerMutedText
     Box(
@@ -399,7 +404,7 @@ private fun RankingRow(player: RankingPlayerResponse) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = if (isCurrentUser) LearnerPrimaryTint else MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(18.dp)
+        shape = RoundedCornerShape(10.dp)
     ) {
         Row(modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             RankingPositionBadge(position = player.position)
@@ -415,7 +420,7 @@ private fun RankingRow(player: RankingPlayerResponse) {
 
 @Composable
 private fun RobotAvatar(seed: Int, avatarSize: androidx.compose.ui.unit.Dp) {
-    val colors = listOf(Color(0xFF635BFF), Color(0xFFE85D9C), Color(0xFF1FA9B5), Color(0xFFFF9F1C), Color(0xFF61B85C))
+    val colors = listOf(LearnerPrimary, Color(0xFFE85D9C), Color(0xFF1FA9B5), Color(0xFFFF9F1C), Color(0xFF61B85C))
     val body = colors[seed % colors.size]
     Canvas(modifier = Modifier.size(avatarSize)) {
         val unit = minOf(size.width, size.height)
@@ -434,9 +439,9 @@ private fun RobotAvatar(seed: Int, avatarSize: androidx.compose.ui.unit.Dp) {
 fun StatisticMetricCard(value: String, label: String, accent: Color, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier.height(96.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(14.dp),
@@ -459,9 +464,9 @@ fun WeeklyStudyChart(days: List<Pair<String, Int>>, isPreview: Boolean = false) 
     val maxMinutes = (days.maxOfOrNull { it.second } ?: 0).coerceAtLeast(1)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
@@ -562,7 +567,9 @@ fun ProgressDashboardHeader(goals: List<GoalResponse>) {
                         .height(6.dp)
                         .clip(RoundedCornerShape(99.dp)),
                     color = LearnerTeal,
-                    trackColor = LearnerTeal.copy(alpha = 0.15f)
+                    trackColor = LearnerTeal.copy(alpha = 0.15f),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
             }
         }
@@ -613,7 +620,7 @@ fun GoalsMissionsDashboard(
             missionState.missions.forEachIndexed { index, mission ->
                 MissionRuleCard(
                     mission = mission,
-                    accent = if (index % 2 == 0) Color(0xFF6A63FF) else Color(0xFFE88CB9)
+                    accent = if (index % 2 == 0) LearnerPrimary else LearnerPink
                 )
             }
         }
@@ -630,7 +637,7 @@ fun GoalsMissionsDashboard(
                     }
                 )
             } else {
-                Button(onClick = { showCustomGoalForm = true }, modifier = Modifier.fillMaxWidth()) {
+                Button(shape = MaterialTheme.shapes.small, onClick = { showCustomGoalForm = true }, modifier = Modifier.fillMaxWidth()) {
                     Text("+ Criar meta personalizada")
                 }
             }
@@ -647,8 +654,8 @@ fun GoalsMissionsDashboard(
 private fun MissionPointsSummaryCard(points: UserPointsUi) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF292059))
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = LearnerDeepIndigo)
     ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Pontuação", color = Color.White, fontWeight = FontWeight.Black, fontSize = 22.sp)
@@ -670,7 +677,7 @@ private fun MissionPointsSummaryCard(points: UserPointsUi) {
 private fun MissionSummaryMetric(value: String, label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(18.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(Color.White.copy(alpha = .12f))
             .padding(vertical = 12.dp),
         contentAlignment = Alignment.Center
@@ -686,7 +693,7 @@ private fun MissionSummaryMetric(value: String, label: String, modifier: Modifie
 private fun MissionRuleCard(mission: AppMissionUi, accent: Color) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = .12f))
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -702,7 +709,9 @@ private fun MissionRuleCard(mission: AppMissionUi, accent: Color) {
                     progress = { mission.progress.coerceIn(0f, 1f) },
                     modifier = Modifier.weight(1f).height(8.dp).clip(RoundedCornerShape(99.dp)),
                     color = accent,
-                    trackColor = accent.copy(alpha = .18f)
+                    trackColor = accent.copy(alpha = .18f),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
                 Text(mission.progressText, color = LearnerMutedText, fontSize = 12.sp)
             }
@@ -715,8 +724,8 @@ private fun MissionRuleCard(mission: AppMissionUi, accent: Color) {
 private fun CustomGoalCard(goal: CustomGoalUi) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Column {
@@ -727,7 +736,9 @@ private fun CustomGoalCard(goal: CustomGoalUi) {
                 progress = { goal.progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
                 color = LearnerTeal,
-                trackColor = LearnerTeal.copy(alpha = .15f)
+                trackColor = LearnerTeal.copy(alpha = .15f),
+                gapSize = 0.dp,
+                drawStopIndicator = {}
             )
             Text("${goal.progressText} • ${goal.period} • ${if (goal.completed) "Concluída" else "Em andamento"}", color = LearnerMutedText, fontSize = 12.sp)
         }
@@ -754,7 +765,7 @@ private fun CustomGoalForm(
         }
         OutlinedTextField(value = target, onValueChange = { target = it.filter(Char::isDigit).take(2) }, label = { Text("Sessões para concluir") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 enabled = title.trim().isNotBlank(),
                 onClick = { onSave(title, description, period, target.toIntOrNull() ?: 1) },
                 modifier = Modifier.weight(1f)
@@ -768,7 +779,7 @@ private fun CustomGoalForm(
 private fun MissionPeriodChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),
@@ -817,7 +828,9 @@ fun DashboardAccentCard(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(99.dp)),
                     color = if (emphasized) Color.White else accent,
-                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else accent.copy(alpha = 0.18f)
+                    trackColor = if (emphasized) Color.White.copy(alpha = 0.30f) else accent.copy(alpha = 0.18f),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
             }
         }
@@ -835,15 +848,15 @@ fun ProgressBreakdownCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, color = accent, fontWeight = FontWeight.Bold)
+            Text(title, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface)
             if (items.isEmpty()) {
-                Text("Sem dados no periodo", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("Sem dados no período", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
             } else {
                 items.forEach { (label, value) ->
                     Text(label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
@@ -853,7 +866,9 @@ fun ProgressBreakdownCard(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(99.dp)),
                         color = accent,
-                        trackColor = accent.copy(alpha = 0.15f)
+                        trackColor = accent.copy(alpha = 0.15f),
+                        gapSize = 0.dp,
+                        drawStopIndicator = {}
                     )
                     Text("$value min", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
@@ -893,9 +908,11 @@ fun MissionDashboardCard(mission: MissionResponse, accent: Color, onClaim: () ->
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(99.dp)),
                 color = Color.White,
-                trackColor = Color.White.copy(alpha = 0.30f)
+                trackColor = Color.White.copy(alpha = 0.30f),
+                gapSize = 0.dp,
+                drawStopIndicator = {}
             )
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 enabled = mission.completed && !mission.claimed,
                 onClick = onClaim,
                 modifier = Modifier.fillMaxWidth(),
@@ -944,7 +961,7 @@ fun ReviewsScreen(
             accentColor = LearnerTeal
         )
 
-        Button(
+        Button(shape = MaterialTheme.shapes.small,
             onClick = {
                 showCreateForm = !showCreateForm
                 formMessage = null
@@ -957,8 +974,8 @@ fun ReviewsScreen(
         if (showCreateForm) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
@@ -997,7 +1014,7 @@ fun ReviewsScreen(
                     )
                     formMessage?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(
+                        Button(shape = MaterialTheme.shapes.small,
                             onClick = {
                                 if (title.isBlank() || subject.isBlank() || dueDate.length != 10) {
                                     formMessage = "Preencha título, matéria e data no formato AAAA-MM-DD."

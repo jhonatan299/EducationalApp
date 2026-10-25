@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -220,7 +221,7 @@ fun StudyPlanningScreen(userId: Long, onStartStudy: () -> Unit = {}) {
 @Composable
 private fun StudyPlanningList(subjects: List<StudySubjectPlan>, onCreate: () -> Unit, onOpen: (StudySubjectPlan) -> Unit) {
     Text("Organize matérias, temas e prazos para estudar melhor.", color = LearnerMutedText)
-    Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("+ Nova matéria") }
+    Button(shape = MaterialTheme.shapes.small, onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("+ Nova matéria") }
     if (subjects.isEmpty()) {
         EmptyPlanningCard(
             title = "Você ainda não criou nenhum plano de estudo.",
@@ -240,8 +241,8 @@ private fun StudySubjectCard(subject: StudySubjectPlan, onClick: () -> Unit) {
     val progress = if (total == 0) 0f else done.toFloat() / total.toFloat()
     Card(
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(subject.name, fontFamily = CircularDisplayFamily, fontSize = 21.sp, fontWeight = FontWeight.Black)
@@ -256,7 +257,9 @@ private fun StudySubjectCard(subject: StudySubjectPlan, onClick: () -> Unit) {
                 progress = { progress },
                 modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(99.dp)),
                 color = LearnerPrimary,
-                trackColor = LearnerPrimaryTint
+                trackColor = LearnerPrimaryTint,
+                gapSize = 0.dp,
+                drawStopIndicator = {}
             )
         }
     }
@@ -276,8 +279,8 @@ private fun StudySubjectDetails(
 ) {
     StudySubjectCard(subject = subject, onClick = {})
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = onAddTopic, modifier = Modifier.weight(1f)) { Text("Adicionar tema") }
-        Button(onClick = onEditSubject, modifier = Modifier.weight(1f)) { Text("Editar matéria") }
+        Button(shape = MaterialTheme.shapes.small, onClick = onAddTopic, modifier = Modifier.weight(1f)) { Text("Adicionar tema") }
+        Button(shape = MaterialTheme.shapes.small, onClick = onEditSubject, modifier = Modifier.weight(1f)) { Text("Editar matéria") }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         TextButton(onClick = onBackToList, modifier = Modifier.weight(1f)) { Text("Ver lista") }
@@ -309,8 +312,8 @@ private fun StudyTopicCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(topic.name, fontWeight = FontWeight.Black, fontSize = 17.sp)
@@ -323,13 +326,13 @@ private fun StudyTopicCard(
             tasks.sortedBy { it.orderIndex }.forEach { task ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(10.dp),
                     colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint.copy(alpha = .55f))
                 ) {
                     Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(task.title, fontWeight = FontWeight.Bold)
                         Text(task.studyType, color = LearnerMutedText, fontSize = 12.sp)
-                        Button(onClick = { onStartTask(task) }, modifier = Modifier.fillMaxWidth()) {
+                        Button(shape = MaterialTheme.shapes.small, onClick = { onStartTask(task) }, modifier = Modifier.fillMaxWidth()) {
                             Text("Iniciar estudo")
                         }
                     }
@@ -369,7 +372,7 @@ private fun StudySubjectForm(initial: StudySubjectPlan?, onCancel: () -> Unit, o
         OutlinedTextField(value = weeklyGoal, onValueChange = { weeklyGoal = it }, label = { Text("Meta semanal em minutos (opcional)") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 onClick = {
                     if (name.isBlank()) {
                         error = "Nome da matéria é obrigatório para salvar."
@@ -413,7 +416,7 @@ private fun StudyTopicForm(subjectId: Long, initial: StudyTopicPlan?, onCancel: 
         OutlinedTextField(value = note, onValueChange = { note = it.take(140) }, label = { Text("Observação curta (opcional)") }, modifier = Modifier.fillMaxWidth())
         error?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 onClick = {
                     if (name.isBlank()) {
                         error = "Nome do tema é obrigatório para salvar."
@@ -442,7 +445,7 @@ private fun StudyTopicForm(subjectId: Long, initial: StudyTopicPlan?, onCancel: 
 
 @Composable
 private fun PlanningFormCard(title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, fontFamily = CircularDisplayFamily, fontSize = 22.sp, fontWeight = FontWeight.Black)
             content()
@@ -465,7 +468,7 @@ private fun <T> PlanningSelector(label: String, values: List<T>, selected: T, la
 @Composable
 private fun ReusablePlanningChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
-        modifier = modifier.clip(RoundedCornerShape(14.dp)).background(if (selected) LearnerPrimary else LearnerPrimaryTint).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 8.dp),
+        modifier = modifier.clip(RoundedCornerShape(10.dp)).background(if (selected) LearnerPrimary else LearnerPrimaryTint).clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(text, color = if (selected) Color.White else LearnerPrimary, fontWeight = FontWeight.Bold, fontSize = 12.sp, textAlign = TextAlign.Center)
@@ -484,14 +487,14 @@ private fun PlanningPill(text: String, color: Color, modifier: Modifier = Modifi
 
 @Composable
 private fun EmptyPlanningCard(title: String, text: String, action: String, onAction: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(24.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(modifier = Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(modifier = Modifier.clip(RoundedCornerShape(22.dp)).background(LearnerPrimaryTint).padding(horizontal = 22.dp, vertical = 16.dp)) {
+            Box(modifier = Modifier.clip(RoundedCornerShape(10.dp)).background(LearnerPrimaryTint).padding(horizontal = 22.dp, vertical = 16.dp)) {
                 Text("PLANO", color = LearnerPrimary, fontWeight = FontWeight.Black)
             }
             Text(title, fontWeight = FontWeight.Black, fontSize = 18.sp, textAlign = TextAlign.Center)
             Text(text, color = LearnerMutedText, textAlign = TextAlign.Center)
-            Button(onClick = onAction) { Text(action) }
+            Button(shape = MaterialTheme.shapes.small, onClick = onAction) { Text(action) }
         }
     }
 }

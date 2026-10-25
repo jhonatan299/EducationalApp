@@ -225,7 +225,7 @@ fun PomodoroScreen(
             NumberField("Pausa", playerState.breakMinutes, { playerState.breakMinutes = it }, Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 val focus = playerState.focusMinutes.toIntOrNull() ?: 25
                 val pause = playerState.breakMinutes.toIntOrNull() ?: 5
                 playerState.pomodoroId = 0L
@@ -245,12 +245,12 @@ fun PomodoroScreen(
                     playerState.status = "Modo convidado - timer local"
                 }
             }, modifier = Modifier.weight(1f)) { Text("Come\u00e7ar") }
-            Button(onClick = { if (playerState.totalSeconds > 0) playerState.running = !playerState.running }, modifier = Modifier.weight(1f)) {
+            Button(shape = MaterialTheme.shapes.small, onClick = { if (playerState.totalSeconds > 0) playerState.running = !playerState.running }, modifier = Modifier.weight(1f)) {
                 Text(if (playerState.running) "Pausar" else "Continuar")
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 if (playerState.totalSeconds == 0) return@Button
                 playerState.totalSeconds += 5 * 60
                 playerState.remainingSeconds += 5 * 60
@@ -260,7 +260,7 @@ fun PomodoroScreen(
                         .onFailure { playerState.status = "+5 local - sincroniza\u00e7\u00e3o pendente" }
                 }
             }, modifier = Modifier.weight(1f)) { Text("+5") }
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 if (playerState.totalSeconds != 0) {
                     playerState.running = false
                     playerState.minimized = false
@@ -270,7 +270,7 @@ fun PomodoroScreen(
             }, modifier = Modifier.weight(1f)) { Text("Concluir") }
         }
         if (playerState.showQuickReport) {
-            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), colors = CardDefaults.cardColors(containerColor = Color.White)) {
+            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(10.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Sess\u00e3o conclu\u00edda", fontWeight = FontWeight.Black, fontSize = 20.sp)
                     Text(
@@ -350,9 +350,9 @@ fun PomodoroScreen(
                             playerState.status = "Salvo local - sincroniza depois"
                         }
                     }
-                    Button(onClick = { saveQuickReport(false) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar") }
+                    Button(shape = MaterialTheme.shapes.small, onClick = { saveQuickReport(false) }, modifier = Modifier.fillMaxWidth()) { Text("Salvar") }
                     if (playerState.activeTaskId != 0L) Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = { saveQuickReport(true) }, modifier = Modifier.weight(1f)) { Text("Salvar e concluir tarefa") }
+                        Button(shape = MaterialTheme.shapes.small, onClick = { saveQuickReport(true) }, modifier = Modifier.weight(1f)) { Text("Salvar e concluir tarefa") }
                         TextButton(onClick = { saveQuickReport(false) }, modifier = Modifier.weight(1f)) { Text("Salvar sem concluir") }
                     }
                 }
@@ -575,7 +575,7 @@ fun PomodoroColorSelector(selected: Color, onSelected: (Color) -> Unit) {
 private fun PomodoroPlanChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 9.dp),

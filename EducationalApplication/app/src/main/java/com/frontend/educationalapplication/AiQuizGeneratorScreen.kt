@@ -75,7 +75,7 @@ fun AiQuizGeneratorScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(10.dp),
             colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint)
         ) {
             Row(
@@ -130,7 +130,7 @@ fun AiQuizGeneratorScreen(
             supportingText = { Text("${sourceText.length}/9000 caracteres") }
         )
 
-        Button(
+        Button(shape = MaterialTheme.shapes.small,
             onClick = {
                 if (loading) return@Button
                 loading = true
@@ -193,7 +193,7 @@ private fun GameModeChip(
 ) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else MaterialTheme.colorScheme.surface)
             .clickable(onClick = onClick)
             .padding(vertical = 12.dp, horizontal = 10.dp),
@@ -220,7 +220,7 @@ private fun AiQuizResult(api: EducationalApi, quiz: GeneratedQuizResponse, onIgn
         Text("${quiz.questions.size} perguntas universais", color = LearnerMutedText)
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 onClick = {
                     scope.launch {
                         runCatching { api.saveGeneratedQuestions(quiz.source, "Universal", quiz.questions) }
@@ -233,7 +233,7 @@ private fun AiQuizResult(api: EducationalApi, quiz: GeneratedQuizResponse, onIgn
                 },
                 modifier = Modifier.weight(1f)
             ) { Text("Salvar todas") }
-            Button(
+            Button(shape = MaterialTheme.shapes.small,
                 onClick = onIgnored,
                 modifier = Modifier.weight(1f)
             ) { Text("Ignorar") }
@@ -243,7 +243,7 @@ private fun AiQuizResult(api: EducationalApi, quiz: GeneratedQuizResponse, onIgn
         quiz.questions.forEachIndexed { index, question ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(10.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -273,7 +273,7 @@ private fun AiQuizResult(api: EducationalApi, quiz: GeneratedQuizResponse, onIgn
                         Spacer(Modifier.height(2.dp))
                         Text("Explicacao: ${question.explanation}", color = LearnerMutedText, fontSize = 13.sp)
                     }
-                    Button(
+                    Button(shape = MaterialTheme.shapes.small,
                         onClick = {
                             scope.launch {
                                 runCatching { api.saveGeneratedQuestions(quiz.source, "Universal", listOf(question)) }

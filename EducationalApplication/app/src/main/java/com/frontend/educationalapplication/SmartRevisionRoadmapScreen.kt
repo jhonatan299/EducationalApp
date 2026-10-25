@@ -181,7 +181,7 @@ fun SmartRevisionRoadmapScreen(
 
         SmartPlanStep.SAVED -> SectionCard("Plano salvo com sucesso") {
             Text("As revisões foram programadas e os temas sugeridos já entram no menu do Relatório.", color = LearnerMutedText)
-            Button(onClick = {
+            Button(shape = MaterialTheme.shapes.small, onClick = {
                 roadmap = null
                 selectedOption = null
                 editableRevisions.clear()
@@ -258,7 +258,7 @@ private fun SmartPlanCreateStep(
         Text("Objetivo", fontWeight = FontWeight.Black)
         SmartChipRow(listOf("Prova", "ENEM", "Faculdade", "Trabalho", "Estudo pessoal"), goal, onGoal)
 
-        Button(enabled = !loading && subject.isNotBlank(), onClick = onGenerate, modifier = Modifier.fillMaxWidth()) {
+        Button(shape = MaterialTheme.shapes.small, enabled = !loading && subject.isNotBlank(), onClick = onGenerate, modifier = Modifier.fillMaxWidth()) {
             Text(if (loading) "Gerando..." else "Gerar plano com IA")
         }
         message?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
@@ -283,8 +283,8 @@ private fun SmartPlanChooseStep(
 private fun SmartPlanOptionCard(option: StudyPlanOptionResponse, onChoose: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        shape = RoundedCornerShape(18.dp)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(10.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("Opção ${option.optionNumber}: ${option.title}", fontWeight = FontWeight.Black, fontSize = 18.sp)
@@ -293,7 +293,7 @@ private fun SmartPlanOptionCard(option: StudyPlanOptionResponse, onChoose: () ->
             option.revisions.take(3).forEach {
                 Text("• ${it.date} ${it.time} — ${it.topicName}", color = LearnerMutedText, fontSize = 12.sp)
             }
-            Button(onClick = onChoose, modifier = Modifier.fillMaxWidth()) { Text("Escolher esta opção") }
+            Button(shape = MaterialTheme.shapes.small, onClick = onChoose, modifier = Modifier.fillMaxWidth()) { Text("Escolher esta opção") }
         }
     }
 }
@@ -317,7 +317,7 @@ private fun SmartPlanReviewStep(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
             TextButton(onClick = onBack, modifier = Modifier.weight(1f)) { Text("Voltar") }
-            Button(enabled = revisions.isNotEmpty(), onClick = onSave, modifier = Modifier.weight(1f)) { Text("Salvar plano") }
+            Button(shape = MaterialTheme.shapes.small, enabled = revisions.isNotEmpty(), onClick = onSave, modifier = Modifier.weight(1f)) { Text("Salvar plano") }
         }
         message?.let { Text(it, color = LearnerCoral, fontWeight = FontWeight.Bold) }
     }
@@ -327,7 +327,7 @@ private fun SmartPlanReviewStep(
 private fun EditableRevisionCard(revision: EditablePlannedRevision, onRemove: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = LearnerPrimaryTint.copy(alpha = .45f))
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -362,7 +362,7 @@ private fun SmartChipRow(options: List<String>, selected: String, onSelected: (S
 private fun SmartChip(text: String, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(if (selected) LearnerPrimary else LearnerPrimaryTint)
             .clickable(onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 9.dp),

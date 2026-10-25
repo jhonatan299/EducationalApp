@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -82,6 +83,17 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
+import com.frontend.educationalapplication.ui.theme.LearnerBlue
+import com.frontend.educationalapplication.ui.theme.LearnerCardVariant
+import com.frontend.educationalapplication.ui.theme.LearnerDeepIndigo
+import com.frontend.educationalapplication.ui.theme.LearnerPink
+import com.frontend.educationalapplication.ui.theme.LearnerProgress
+import com.frontend.educationalapplication.ui.theme.LearnerText
+import com.frontend.educationalapplication.ui.theme.LearnerTrack
+import androidx.compose.foundation.layout.navigationBarsPadding
+import com.frontend.educationalapplication.ui.theme.LearnerNavIcon
+import com.frontend.educationalapplication.ui.theme.LearnerNavActiveBg
+import com.frontend.educationalapplication.ui.theme.LearnerNavActive
 @Composable
 fun HomeScreen(
     api: EducationalApi,
@@ -144,7 +156,7 @@ fun HomeScreen(
             calendar = demo.calendar
             progress = demo.progress
             loading = false
-            message = "Modo demo: dados de exemplo para apresenta??o."
+            message = "Modo demo: dados de exemplo para apresentação."
             return
         }
         loading = true
@@ -439,8 +451,8 @@ fun GamesHubScreen(
         Text("Desafie amigos e aprenda jogando.", color = LearnerMutedText)
         Card(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuizSolo),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(10.dp)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -452,7 +464,7 @@ fun GamesHubScreen(
                     contentAlignment = Alignment.Center
                 ) { Text("1P", fontSize = 24.sp, color = LearnerPrimary, fontWeight = FontWeight.Black) }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Quiz Solo", color = Color(0xFF111827), fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Quiz Solo", color = LearnerText, fontWeight = FontWeight.Black, fontSize = 20.sp)
                     Text("Responda perguntas, teste seus conhecimentos e ganhe pontos.", color = LearnerMutedText, fontSize = 13.sp)
                     Box(
                         modifier = Modifier
@@ -468,8 +480,8 @@ fun GamesHubScreen(
         }
         Card(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenAiQuizGenerator),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF5B4BFF)),
-            shape = RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = LearnerPrimary),
+            shape = RoundedCornerShape(10.dp)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -490,7 +502,7 @@ fun GamesHubScreen(
         Card(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuizPoker),
             colors = CardDefaults.cardColors(containerColor = Color(0xFF123D25)),
-            shape = RoundedCornerShape(24.dp)
+            shape = RoundedCornerShape(10.dp)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -510,8 +522,8 @@ fun GamesHubScreen(
         }
         Card(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenQuestionBank),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            shape = RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            shape = RoundedCornerShape(10.dp)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -523,7 +535,7 @@ fun GamesHubScreen(
                     contentAlignment = Alignment.Center
                 ) { Text("Q", fontSize = 26.sp, color = LearnerPrimary, fontWeight = FontWeight.Black) }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Banco de perguntas", color = Color(0xFF111827), fontWeight = FontWeight.Black, fontSize = 20.sp)
+                    Text("Banco de perguntas", color = LearnerText, fontWeight = FontWeight.Black, fontSize = 20.sp)
                     Text("Buscar, reclassificar e eliminar perguntas salvas", color = LearnerMutedText, fontSize = 13.sp)
                 }
                 Text(">", color = LearnerPrimary, fontSize = 28.sp, fontWeight = FontWeight.Black)
@@ -531,8 +543,8 @@ fun GamesHubScreen(
         }
         Card(
             modifier = Modifier.fillMaxWidth().clickable(onClick = onOpenPsychBluff),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF2D1054)),
-            shape = RoundedCornerShape(24.dp)
+            colors = CardDefaults.cardColors(containerColor = LearnerDeepIndigo),
+            shape = RoundedCornerShape(10.dp)
         ) {
             Row(
                 modifier = Modifier.padding(20.dp),
@@ -542,7 +554,7 @@ fun GamesHubScreen(
                 Box(
                     modifier = Modifier.size(58.dp).background(Color(0xFFFFD700), CircleShape),
                     contentAlignment = Alignment.Center
-                ) { Text("?", fontSize = 30.sp, color = Color(0xFF2D1054), fontWeight = FontWeight.Black) }
+                ) { Text("?", fontSize = 30.sp, color = LearnerDeepIndigo, fontWeight = FontWeight.Black) }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text("Psych! Bluff Trivia", color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
                     Text("Invente respostas e engane seus amigos", color = Color.White.copy(alpha = .76f), fontSize = 13.sp)
@@ -629,9 +641,9 @@ fun ProgressOverview(
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onOpenWeeklyProgress() },
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(18.dp),
@@ -642,7 +654,7 @@ fun ProgressOverview(
                 Text(
                     text = "Seu progresso de estudo",
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color(0xFF0F2A56),
+                    color = LearnerText,
                     fontWeight = FontWeight.Bold
                 )
                 Box(
@@ -650,14 +662,14 @@ fun ProgressOverview(
                         .fillMaxWidth()
                         .height(4.dp)
                         .clip(RoundedCornerShape(99.dp))
-                        .background(Color(0xFFE8EEFF))
+                        .background(LearnerTrack)
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(displayProgress.coerceAtLeast(0.02f))
                             .height(4.dp)
                             .clip(RoundedCornerShape(99.dp))
-                            .background(Color(0xFF2F6BFF))
+                            .background(LearnerProgress)
                     )
                 }
                 Text(
@@ -665,16 +677,16 @@ fun ProgressOverview(
                         "${it.currentMinutes}/${it.targetMinutes} min na meta atual - $percent%"
                     } ?: "$weeklyMinutes/$weeklyTargetMinutes min nesta semana",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF35507A)
+                    color = LearnerMutedText
                 )
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFFEAF0FF))
+                        .background(LearnerPrimaryTint)
                         .clickable { onOpenWeeklyProgress() }
                         .padding(horizontal = 16.dp, vertical = 9.dp)
                 ) {
-                    Text("Ver semana", color = Color(0xFF315DFF), fontWeight = FontWeight.Black)
+                    Text("Ver semana", color = LearnerPrimary, fontWeight = FontWeight.Black)
                 }
             }
             WeeklyProgressRing(
@@ -692,19 +704,19 @@ private fun WeeklyProgressRing(progress: Float, label: String, onClick: () -> Un
         modifier = Modifier
             .size(78.dp)
             .clip(CircleShape)
-            .background(Color(0xFFEAF0FF))
+            .background(LearnerPrimaryTint)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(68.dp)) {
             drawCircle(
-                color = Color(0xFFD7E0FF),
+                color = LearnerTrack,
                 radius = size.minDimension * .42f,
                 center = Offset(size.width / 2f, size.height / 2f),
                 style = Stroke(width = 8f, cap = StrokeCap.Round)
             )
             drawArc(
-                color = Color(0xFF315DFF),
+                color = LearnerPrimary,
                 startAngle = -90f,
                 sweepAngle = 360f * progress.coerceIn(0f, 1f),
                 useCenter = false,
@@ -715,7 +727,7 @@ private fun WeeklyProgressRing(progress: Float, label: String, onClick: () -> Un
         }
         Text(
             text = label,
-            color = Color(0xFF315DFF),
+            color = LearnerPrimary,
             fontWeight = FontWeight.Black,
             fontSize = 14.sp
         )
@@ -778,7 +790,7 @@ fun WeeklyProgressTasksScreen(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
         ) {
-            Text("Semana de estudos", fontFamily = CircularDisplayFamily, fontSize = 26.sp, fontWeight = FontWeight.Black, color = Color(0xFF111827))
+            Text("Semana de estudos", fontFamily = CircularDisplayFamily, fontSize = 26.sp, fontWeight = FontWeight.Black, color = LearnerText)
         }
 
         Row(
@@ -864,8 +876,8 @@ private fun WeeklyDayChip(month: String, day: String, name: String, selected: Bo
     Card(
         modifier = modifier
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = if (selected) LearnerPrimary else Color.White),
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = if (selected) LearnerPrimary else MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = if (selected) 3.dp else 1.dp)
     ) {
         Column(
@@ -876,7 +888,7 @@ private fun WeeklyDayChip(month: String, day: String, name: String, selected: Bo
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Text(month, color = if (selected) Color.White.copy(alpha = .85f) else LearnerMutedText, fontSize = 9.sp, maxLines = 1)
-            Text(day, color = if (selected) Color.White else Color(0xFF111827), fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1)
+            Text(day, color = if (selected) Color.White else LearnerText, fontSize = 16.sp, fontWeight = FontWeight.Black, maxLines = 1)
             Text(name, color = if (selected) Color.White.copy(alpha = .9f) else LearnerMutedText, fontSize = 9.sp, maxLines = 1)
         }
     }
@@ -915,8 +927,8 @@ private fun DayNavButton(text: String, onClick: () -> Unit) {
 private fun WeeklyFilterChip(text: String, selected: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(14.dp))
-            .background(if (selected) LearnerPrimary else Color(0xFFEDEBFA))
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (selected) LearnerPrimary else LearnerCardVariant)
             .clickable(onClick = onClick)
             .padding(horizontal = 22.dp, vertical = 12.dp),
         contentAlignment = Alignment.Center
@@ -929,9 +941,9 @@ private fun WeeklyFilterChip(text: String, selected: Boolean, onClick: () -> Uni
 private fun WeeklyTaskCard(item: WeeklyTaskCardData) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        shape = RoundedCornerShape(10.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -940,7 +952,7 @@ private fun WeeklyTaskCard(item: WeeklyTaskCardData) {
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(item.eyebrow, color = LearnerMutedText, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                Text(item.title, color = Color(0xFF111827), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(item.title, color = LearnerText, fontSize = 17.sp, fontWeight = FontWeight.Bold)
                 Text(item.time, color = item.accent, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
             Box(
@@ -972,10 +984,13 @@ fun PriorityActionCards(
         .maxByOrNull { it.progressPercent }
 
     StudyProgressCard(
-        title = priorityReview?.let { it.topic.orEmpty().ifBlank { it.subject.ifBlank { it.title } } } ?: "Próxima revisão",
+        title = priorityReview?.let { review ->
+            // Backend can send null fields despite the non-null model, so skip blanks and "null".
+            listOf<String?>(review.topic, review.subject, review.title).firstOrNull { !it.isNullOrBlank() && it != "null" }
+        } ?: "Próxima revisão",
         action = "Revisar",
         progress = priorityReview?.dueDate?.takeIf { it.isNotBlank() } ?: "${reviews.count { !it.completed }} pend.",
-        accent = Color(0xFF6A63FF),
+        accent = LearnerPrimary,
         variant = 0,
         onClick = onOpenPriorityReview
     )
@@ -984,7 +999,7 @@ fun PriorityActionCards(
         action = "Continuar",
         progress = bestGoal?.let { "${it.currentMinutes}/${it.targetMinutes}" } ?: "0/0",
         progressFraction = bestGoal?.let { (it.progressPercent / 100.0).toFloat() },
-        accent = Color(0xFFE88CB9),
+        accent = LearnerPink,
         variant = 1,
         onClick = onOpenBestGoal
     )
@@ -1002,14 +1017,14 @@ fun HomeFeatureCard(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = CardDefaults.cardColors(containerColor = accent),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(142.dp)
+                .heightIn(min = 142.dp)
                 .padding(20.dp)
         ) {
             Canvas(modifier = Modifier.matchParentSize()) {
@@ -1043,7 +1058,7 @@ fun HomeFeatureCard(
                 )
             }
             Column(
-                modifier = Modifier.align(Alignment.TopStart),
+                modifier = Modifier.align(Alignment.TopStart).fillMaxWidth(0.64f),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
@@ -1179,7 +1194,9 @@ fun StudyProgressCard(
                         .height(6.dp)
                         .clip(RoundedCornerShape(99.dp)),
                     color = Color.White,
-                    trackColor = Color.White.copy(alpha = 0.28f)
+                    trackColor = Color.White.copy(alpha = 0.28f),
+                    gapSize = 0.dp,
+                    drawStopIndicator = {}
                 )
             }
             Box(
@@ -1230,10 +1247,10 @@ fun HeaderSection(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(
                 Brush.linearGradient(
-                    colors = listOf(LearnerPrimary, Color(0xFF5D7CFF))
+                    colors = listOf(LearnerPrimary, LearnerBlue)
                 )
             )
             .padding(22.dp)
@@ -1257,7 +1274,7 @@ fun HeaderSection(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Ola, ${userName.firstName()}",
+                        text = "Olá, ${userName.firstName()}",
                         style = MaterialTheme.typography.headlineLarge,
                         color = Color.White,
                         fontFamily = CircularDisplayFamily
@@ -1327,10 +1344,10 @@ fun SearchBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(46.dp)
-            .clip(RoundedCornerShape(23.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 18.dp),
+            .height(41.dp)
+            .clip(RoundedCornerShape(10.dp))
+            .background(Color(0xFFF2F3F8))
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         SearchGlyph(color = LearnerMutedText.copy(alpha = 0.78f))
@@ -1362,32 +1379,56 @@ fun BottomNavBar(
     items: List<String>,
     onSelected: (Int) -> Unit
 ) {
+    // Figma nav: white bar, the active tab is a tinted pill with icon + label.
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        shadowElevation = 8.dp
+        color = Color.White,
+        shadowElevation = 2.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(88.dp)
-                .padding(horizontal = 18.dp),
+                .navigationBarsPadding()
+                .height(64.dp)
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             items.forEachIndexed { index, title ->
                 val selected = selectedIndex == index
-                Box(
-                    modifier = Modifier
-                        .size(if (selected) 52.dp else 44.dp)
-                        .clip(CircleShape)
-                        .background(if (selected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent)
-                        .clickable { onSelected(index) }
-                        .padding(12.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    NavGlyph(index = index, color = if (selected) LearnerPrimary else MaterialTheme.colorScheme.onSurfaceVariant)
+                if (selected) {
+                    Row(
+                        modifier = Modifier
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(LearnerNavActiveBg)
+                            .clickable { onSelected(index) }
+                            .padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(Modifier.size(18.dp), contentAlignment = Alignment.Center) {
+                            NavGlyph(index = index, color = LearnerNavActive)
+                        }
+                        Text(
+                            text = title,
+                            color = LearnerNavActive,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontSize = 11.sp,
+                            maxLines = 1
+                        )
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .clickable { onSelected(index) }
+                            .padding(9.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        NavGlyph(index = index, color = LearnerNavIcon)
+                    }
                 }
             }
         }
@@ -1508,7 +1549,7 @@ fun HelpScreen(onBack: () -> Unit) {
         ReportSubscreenHeader(title = "Ajuda", onBack = onBack)
         HelpTopicCard(
             title = "Como usar o Pomodoro",
-            subtitle = "Escolha uma materia e um tempo de foco. Estude sem interrupcoes ate o contador terminar, faca a pausa e repita. Sessoes curtas ajudam a reduzir cansaco e facilitam comecar.",
+            subtitle = "Escolha uma matéria e um tempo de foco. Estude sem interrupções até o contador terminar, faça a pausa e repita. Sessões curtas ajudam a reduzir o cansaço e facilitam começar.",
             accent = LearnerPrimary
         )
         HelpTopicCard(
@@ -1518,7 +1559,7 @@ fun HelpScreen(onBack: () -> Unit) {
         )
         HelpTopicCard(
             title = "Como funciona o engajamento",
-            subtitle = "Sessoes concluidas alimentam seu historico, metas e missoes. Quando uma missao estiver completa, voc? pode resgatar pontos e acompanhar sua evolucao ao longo da semana.",
+            subtitle = "Sessões concluídas alimentam seu histórico, metas e missões. Quando uma missão estiver completa, você pode resgatar pontos e acompanhar sua evolução ao longo da semana.",
             accent = LearnerCoral
         )
         BottomBackButton(onBack = onBack)
@@ -1532,7 +1573,7 @@ fun LearningPathScreen(title: String, onBack: () -> Unit, onStartFocus: () -> Un
     val secondActivity = if (isEngineering) "Analisar estruturas simples" else "Resolver problemas aplicados"
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         ReportSubscreenHeader(title = title, onBack = onBack)
-        SectionCard("Proxima atividade") {
+        SectionCard("Próxima atividade") {
             Text(
                 "Escolha uma atividade curta e use o Pomodoro para registrar seu foco.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -1541,7 +1582,7 @@ fun LearningPathScreen(title: String, onBack: () -> Unit, onStartFocus: () -> Un
             Spacer(Modifier.height(8.dp))
             ListLine(firstActivity, "15 min de estudo guiado")
             ListLine(secondActivity, "Aplicar o que foi estudado")
-            Button(onClick = onStartFocus, modifier = Modifier.fillMaxWidth()) {
+            Button(shape = MaterialTheme.shapes.small, onClick = onStartFocus, modifier = Modifier.fillMaxWidth()) {
                 Text("Iniciar sessão de foco")
             }
         }
