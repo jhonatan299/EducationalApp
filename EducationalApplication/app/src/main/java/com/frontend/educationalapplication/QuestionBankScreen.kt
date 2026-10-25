@@ -18,6 +18,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,6 +37,7 @@ import com.frontend.educationalapplication.network.EducationalApi
 import com.frontend.educationalapplication.network.QuestionListResponse
 import com.frontend.educationalapplication.network.SavedQuestionResponse
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
+import com.frontend.educationalapplication.ui.theme.LearnerCoral
 import com.frontend.educationalapplication.ui.theme.LearnerMutedText
 import com.frontend.educationalapplication.ui.theme.LearnerPrimary
 import com.frontend.educationalapplication.ui.theme.LearnerPrimaryTint
@@ -46,16 +48,20 @@ fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
     var query by remember { mutableStateOf("") }
     var questions by remember { mutableStateOf<List<SavedQuestionResponse>>(emptyList()) }
     var lists by remember { mutableStateOf<List<QuestionListResponse>>(emptyList()) }
+    var selectedListId by remember { mutableStateOf<Long?>(null) }
+    var showingQuestions by remember { mutableStateOf(false) }
     var newListName by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
+    fun selectedList(): QuestionListResponse? = lists.firstOrNull { it.id == selectedListId }
+
     fun load() {
         loading = true
         message = null
         scope.launch {
-            runCatching { api.savedQuestions(query) to api.questionLists() }
+            runCatching { api.savedQuestions("") to api.questionLists() }
                 .onSuccess {
                     questions = it.first
                     lists = it.second
@@ -65,6 +71,12 @@ fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
         }
     }
 
+    fun openList(listId: Long?) {
+        selectedListId = listId
+        query = ""
+        showingQuestions = true
+    }
+
     LaunchedEffect(Unit) { load() }
 
     Column(
@@ -72,76 +84,130 @@ fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text("Banco de perguntas", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
-        Text("Busque, ajuste o tema, crie listas e organize perguntas do seu jeito.", color = LearnerMutedText)
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text("Minhas listas", fontWeight = FontWeight.Black, fontSize = 18.sp)
-                Text("Crie listas como Difíceis, Prova de sexta ou Para jogar com amigos.", color = LearnerMutedText, fontSize = 13.sp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = newListName,
-                        onValueChange = { newListName = it },
-                        modifier = Modifier.weight(1f),
-                        label = { Text("Nova lista") },
-                        singleLine = true
-                    )
-                    Button(
-                        onClick = {
-                            if (newListName.isBlank()) return@Button
-                            scope.launch {
-                                runCatching { api.createQuestionList(newListName.trim()) }
-                                    .onSuccess {
-                                        lists = listOf(it) + lists
-                                        newListName = ""
-                                        message = "Lista criada."
-                                    }
-                                    .onFailure { message = it.toFriendlyError().description }
+        if (!showingQuestions) {
+            Text("Organize suas perguntas por listas e abra só o que precisa revisar.", color = LearnerMutedText)
+            QuestionListHub(
+                questions = questions,
+                lists = lists,
+                newListName = newListName,
+                onNewListName = { newListName = it },
+                onCreateList = {
+                    if (newListName.isBlank()) return@QuestionListHub
+                    scope.launch {
+                        runCatching { api.createQuestionList(newListName.trim()) }
+                            .onSuccess {
+                                lists = listOf(it) + lists
+                                newListName = ""
+                                message = "Lista criada."
                             }
-                        }
-                    ) { Text("Criar") }
-                }
-                if (lists.isEmpty()) {
-                    Text("Nenhuma lista criada ainda.", color = LearnerMutedText)
-                } else {
-                    lists.forEach { list ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("${list.name} • ${list.questionCount}", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        runCatching { api.deleteQuestionList(list.id) }
-                                            .onSuccess {
-                                                lists = lists.filterNot { it.id == list.id }
-                                                message = "Lista eliminada."
-                                            }
-                                            .onFailure { message = it.toFriendlyError().description }
-                                    }
-                                }
-                            ) { Text("Eliminar") }
-                        }
+                            .onFailure { message = it.toFriendlyError().description }
+                    }
+                },
+                onOpenAll = { openList(null) },
+                onOpenList = { openList(it.id) },
+                onDeleteList = { list ->
+                    scope.launch {
+                        runCatching { api.deleteQuestionList(list.id) }
+                            .onSuccess {
+                                lists = lists.filterNot { it.id == list.id }
+                                message = "Lista eliminada."
+                            }
+                            .onFailure { message = it.toFriendlyError().description }
                     }
                 }
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.weight(1f),
-                label = { Text("Buscar") },
-                singleLine = true
             )
-            Button(onClick = { load() }) { Text("Ir") }
+        } else {
+            val list = selectedList()
+            val visibleQuestions = remember(questions, lists, selectedListId, query) {
+                val base = if (selectedListId == null) {
+                    questions
+                } else {
+                    val ids = list?.questionIds.orEmpty().toSet()
+                    questions.filter { it.id in ids }
+                }
+                base.filter { it.matchesQuestionQuery(query) }
+            }
+
+            QuestionListHeader(
+                title = list?.name ?: "Todas as perguntas",
+                subtitle = "${visibleQuestions.size} perguntas",
+                onBack = {
+                    showingQuestions = false
+                    selectedListId = null
+                    query = ""
+                }
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Buscar nesta lista") },
+                    singleLine = true
+                )
+                Button(onClick = { load() }) { Text("Atualizar") }
+            }
+
+            if (!loading && visibleQuestions.isEmpty()) {
+                EmptyStateCard(
+                    title = if (query.isBlank()) "Lista vazia" else "Nada encontrado",
+                    subtitle = if (selectedListId == null) {
+                        "Gere perguntas e salve as que quiser manter."
+                    } else {
+                        "Adicione perguntas a esta lista pela classificação dos cards."
+                    }
+                )
+            }
+
+            visibleQuestions.forEach { question ->
+                SavedQuestionCard(
+                    question = question,
+                    lists = lists,
+                    onToggleList = { questionList ->
+                        scope.launch {
+                            val isInList = question.id in questionList.questionIds
+                            runCatching {
+                                if (isInList) {
+                                    api.removeQuestionFromList(questionList.id, question.id)
+                                } else {
+                                    api.addQuestionToList(questionList.id, question.id)
+                                }
+                            }.onSuccess { updated ->
+                                lists = lists.map { old -> if (old.id == updated.id) updated else old }
+                                message = if (isInList) "Pergunta removida da lista." else "Pergunta adicionada à lista."
+                            }.onFailure { message = it.toFriendlyError().description }
+                        }
+                    },
+                    onUpdate = { subject ->
+                        scope.launch {
+                            runCatching { api.updateSavedQuestion(question.id, subject) }
+                                .onSuccess {
+                                    questions = questions.map { old -> if (old.id == it.id) it else old }
+                                    message = "Pergunta atualizada."
+                                }
+                                .onFailure { message = it.toFriendlyError().description }
+                        }
+                    },
+                    onDelete = {
+                        scope.launch {
+                            runCatching { api.deleteSavedQuestion(question.id) }
+                                .onSuccess {
+                                    questions = questions.filterNot { it.id == question.id }
+                                    lists = lists.map { old ->
+                                        if (question.id in old.questionIds) {
+                                            val ids = old.questionIds - question.id
+                                            old.copy(questionIds = ids, questionCount = ids.size.toLong())
+                                        } else old
+                                    }
+                                    message = "Pergunta eliminada."
+                                }
+                                .onFailure { message = it.toFriendlyError().description }
+                        }
+                    }
+                )
+            }
         }
 
         if (loading) {
@@ -153,53 +219,131 @@ fun QuestionBankScreen(api: EducationalApi, onBack: () -> Unit) {
         }
         message?.let { Text(it, color = LearnerMutedText, fontWeight = FontWeight.Bold) }
 
-        if (!loading && questions.isEmpty()) {
-            EmptyStateCard("Nenhuma pergunta salva", "Gere perguntas com IA e salve as que quiser manter.")
-        }
+        BottomBackButton(onBack = if (showingQuestions) {
+            {
+                showingQuestions = false
+                selectedListId = null
+                query = ""
+            }
+        } else onBack)
+    }
+}
 
-        questions.forEach { question ->
-            SavedQuestionCard(
-                question = question,
-                lists = lists,
-                onToggleList = { list ->
-                    scope.launch {
-                        val isInList = question.id in list.questionIds
-                        runCatching {
-                            if (isInList) {
-                                api.removeQuestionFromList(list.id, question.id)
-                            } else {
-                                api.addQuestionToList(list.id, question.id)
-                            }
-                        }.onSuccess { updated ->
-                            lists = lists.map { old -> if (old.id == updated.id) updated else old }
-                            message = if (isInList) "Pergunta removida da lista." else "Pergunta adicionada à lista."
-                        }.onFailure { message = it.toFriendlyError().description }
-                    }
-                },
-                onUpdate = { subject ->
-                    scope.launch {
-                        runCatching { api.updateSavedQuestion(question.id, subject) }
-                            .onSuccess {
-                                questions = questions.map { old -> if (old.id == it.id) it else old }
-                                message = "Pergunta atualizada."
-                            }
-                            .onFailure { message = it.toFriendlyError().description }
-                    }
-                },
-                onDelete = {
-                    scope.launch {
-                        runCatching { api.deleteSavedQuestion(question.id) }
-                            .onSuccess {
-                                questions = questions.filterNot { it.id == question.id }
-                                message = "Pergunta eliminada."
-                            }
-                            .onFailure { message = it.toFriendlyError().description }
-                    }
-                }
+@Composable
+private fun QuestionListHub(
+    questions: List<SavedQuestionResponse>,
+    lists: List<QuestionListResponse>,
+    newListName: String,
+    onNewListName: (String) -> Unit,
+    onCreateList: () -> Unit,
+    onOpenAll: () -> Unit,
+    onOpenList: (QuestionListResponse) -> Unit,
+    onDeleteList: (QuestionListResponse) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Listas", fontWeight = FontWeight.Black, fontSize = 20.sp)
+            Text("Separe perguntas por dificuldade, prova, tema ou jogo.", color = LearnerMutedText, fontSize = 13.sp)
+
+            QuestionListCard(
+                title = "Todas as perguntas",
+                subtitle = "Busca geral do banco",
+                count = questions.size.toLong(),
+                accent = LearnerPrimary,
+                onClick = onOpenAll
             )
-        }
 
-        BottomBackButton(onBack = onBack)
+            if (lists.isEmpty()) {
+                EmptyStateCard("Nenhuma lista criada", "Crie uma lista para reduzir a bagunça visual.")
+            } else {
+                lists.forEach { list ->
+                    QuestionListCard(
+                        title = list.name,
+                        subtitle = "Lista personalizada",
+                        count = list.questionCount,
+                        accent = Color(0xFF292059),
+                        onClick = { onOpenList(list) },
+                        onDelete = { onDeleteList(list) }
+                    )
+                }
+            }
+
+            Text("Criar lista", color = LearnerMutedText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = newListName,
+                    onValueChange = onNewListName,
+                    modifier = Modifier.weight(1f),
+                    label = { Text("Nome da lista") },
+                    singleLine = true
+                )
+                Button(onClick = onCreateList) { Text("Criar") }
+            }
+        }
+    }
+}
+
+@Composable
+private fun QuestionListCard(
+    title: String,
+    subtitle: String,
+    count: Long,
+    accent: Color,
+    onClick: () -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable(onClick = onClick),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = accent.copy(alpha = 0.10f))
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(accent)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("$count", color = Color.White, fontWeight = FontWeight.Black)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, fontWeight = FontWeight.Black, fontSize = 17.sp)
+                Text(subtitle, color = LearnerMutedText, fontSize = 12.sp)
+            }
+            onDelete?.let {
+                TextButton(onClick = it) { Text("Eliminar", color = LearnerCoral) }
+            } ?: Text("Abrir", color = accent, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun QuestionListHeader(title: String, subtitle: String, onBack: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        colors = CardDefaults.cardColors(containerColor = LearnerPrimary)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, color = Color.White, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                Text(subtitle, color = Color.White.copy(alpha = 0.78f), fontSize = 13.sp)
+            }
+            Button(onClick = onBack) { Text("Listas") }
+        }
     }
 }
 
@@ -228,7 +372,7 @@ private fun SavedQuestionCard(
                 )
             }
             if (question.explanation.isNotBlank()) {
-                Text("Explicacao: ${question.explanation}", color = LearnerMutedText, fontSize = 13.sp)
+                Text("Explicação: ${question.explanation}", color = LearnerMutedText, fontSize = 13.sp)
             }
             if (lists.isNotEmpty()) {
                 Text("Classificar em listas", color = LearnerMutedText, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -271,4 +415,13 @@ private fun QuestionListChip(text: String, selected: Boolean, onClick: () -> Uni
             fontWeight = FontWeight.Bold
         )
     }
+}
+
+private fun SavedQuestionResponse.matchesQuestionQuery(query: String): Boolean {
+    val clean = query.trim()
+    if (clean.isBlank()) return true
+    return question.contains(clean, ignoreCase = true) ||
+        subject.contains(clean, ignoreCase = true) ||
+        explanation.contains(clean, ignoreCase = true) ||
+        options.any { it.contains(clean, ignoreCase = true) }
 }

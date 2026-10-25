@@ -163,7 +163,7 @@ private fun PokerTable(name: String, onBack: () -> Unit) {
             }
         }
         PokerButton("RESPONDER: 56", onClick = {})
-        Text("Protótipo visual local — a partida online virá com o backend.", color = Color.White.copy(alpha = .55f), fontSize = 12.sp, textAlign = TextAlign.Center)
+        Text("Modo visual local — partida online em breve.", color = Color.White.copy(alpha = .55f), fontSize = 12.sp, textAlign = TextAlign.Center)
         PokerBackText(text = "< SAIR DA MESA", onBack = onBack, modifier = Modifier.fillMaxWidth())
     }
 }

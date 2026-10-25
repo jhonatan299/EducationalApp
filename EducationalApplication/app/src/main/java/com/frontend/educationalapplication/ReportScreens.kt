@@ -125,7 +125,7 @@ fun ReportReviewsScreen(
             )
             ReportSectionCard(
                 title = "Planejamento inteligente",
-                subtitle = "Crie um roadmap de revis?es com IA",
+                subtitle = "Crie um plano de revisões com IA",
                 action = "Gerar",
                 selected = selectedSection == 3,
                 accent = Color(0xFF292059),
@@ -671,4 +671,3 @@ private fun StudySessionReportCard(
         }
     }
 }
-

@@ -360,7 +360,7 @@ fun ChangePasswordScreen(
 
         Button(
             onClick = {
-                message = "Senha atualizada nesta demo. Quando o backend tiver o endpoint, conectamos aqui."
+                message = "Senha atualizada nesta demo. Em uma conta real, essa alteração será salva com segurança."
             },
             enabled = canSave,
             modifier = Modifier.fillMaxWidth()

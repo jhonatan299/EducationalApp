@@ -103,7 +103,7 @@ fun StudyApp(
                             action = { api.login(email, password) },
                             onSuccess = {
                                 isGuest = false
-                                user = it
+                                user = it.withSafeDisplayName()
                             },
                             onError = { error = it }
                         )
@@ -121,7 +121,7 @@ fun StudyApp(
                             action = { api.register(name, email, password) },
                             onSuccess = {
                                 isGuest = false
-                                user = it
+                                user = it.withSafeDisplayName()
                             },
                             onError = { error = it }
                         )
@@ -139,7 +139,7 @@ fun StudyApp(
                 isGuest = isGuest,
                 isInPictureInPictureMode = isInPictureInPictureMode,
                 onEnterPictureInPicture = onEnterPictureInPicture,
-                onUserUpdated = { user = it },
+                onUserUpdated = { user = it.withSafeDisplayName() },
                 onLogout = {
                     user = null
                     isGuest = false
@@ -155,6 +155,15 @@ enum class AuthScreen {
     Onboarding,
     Login,
     Register
+}
+
+private fun AuthResponse.withSafeDisplayName(): AuthResponse {
+    val cleanName = name.trim()
+    val fallback = email.substringBefore("@").trim().replaceFirstChar { char ->
+        if (char.isLowerCase()) char.titlecase() else char.toString()
+    }.ifBlank { "Estudante" }
+    val safeName = if (cleanName.isBlank() || cleanName.equals("null", ignoreCase = true)) fallback else cleanName
+    return copy(name = safeName)
 }
 
 

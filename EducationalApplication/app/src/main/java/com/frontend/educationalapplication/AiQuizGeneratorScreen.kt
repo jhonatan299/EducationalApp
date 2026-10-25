@@ -69,7 +69,7 @@ fun AiQuizGeneratorScreen(
     ) {
         Text("Gerar quiz com IA", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
         Text(
-            "Cole um texto e o Gemini gera perguntas universais para usar depois nos jogos.",
+            "Cole um texto e crie perguntas universais para usar depois nos jogos.",
             color = LearnerMutedText
         )
 
@@ -92,8 +92,8 @@ fun AiQuizGeneratorScreen(
                     Text("AI", color = Color.White, fontWeight = FontWeight.Black)
                 }
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Teste da API Gemini", fontWeight = FontWeight.Black)
-                    Text("A chave fica no backend via GEMINI_API_KEY.", color = LearnerMutedText, fontSize = 13.sp)
+                    Text("Gerador inteligente", fontWeight = FontWeight.Black)
+                    Text("Transforme seu material de estudo em perguntas para praticar.", color = LearnerMutedText, fontSize = 13.sp)
                 }
             }
         }

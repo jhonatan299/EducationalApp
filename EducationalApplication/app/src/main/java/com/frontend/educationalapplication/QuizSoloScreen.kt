@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.frontend.educationalapplication.network.EducationalApi
+import com.frontend.educationalapplication.network.QuestionListResponse
 import com.frontend.educationalapplication.network.SavedQuestionResponse
 import com.frontend.educationalapplication.ui.theme.CircularDisplayFamily
 import com.frontend.educationalapplication.ui.theme.LearnerCoral
@@ -71,10 +72,28 @@ data class QuizSoloRoundHistory(
     val completedAt: String
 )
 
+private data class QuizQuestionSource(
+    val id: Long?,
+    val name: String,
+    val questionCount: Int
+)
+
+private data class QuizSoloLoadResult(
+    val sources: List<QuizQuestionSource>,
+    val selectedSourceId: Long?,
+    val selectedSourceName: String,
+    val totalSavedQuestions: Int,
+    val questions: List<QuizQuestion>
+)
+
 private enum class QuizSoloPhase { LOADING, EMPTY, ERROR, READY, QUESTION, FINISHED }
 
 private data class QuizSoloUiState(
     val phase: QuizSoloPhase = QuizSoloPhase.LOADING,
+    val sources: List<QuizQuestionSource> = emptyList(),
+    val selectedSourceId: Long? = null,
+    val selectedSourceName: String = "Todas as perguntas",
+    val totalSavedQuestions: Int = 0,
     val questions: List<QuizQuestion> = emptyList(),
     val currentIndex: Int = 0,
     val selectedAnswerIndex: Int? = null,
@@ -97,18 +116,35 @@ object QuizSoloRewardRules {
 }
 
 private class QuizQuestionRepository(private val api: EducationalApi) {
-    suspend fun loadRoundQuestions(count: Int): List<QuizQuestion> {
-        val saved = runCatching { api.savedQuestions() }.getOrNull().orEmpty()
-            .mapNotNull { it.toQuizQuestionOrNull() }
-
-        // TODO: quando a base real de perguntas estiver estável/persistente, remover esse complemento mock.
-        val source = if (saved.size >= count) saved else saved + mockQuestions().filterNot { mock ->
-            saved.any { it.questionText == mock.questionText }
+    suspend fun loadRoundQuestions(sourceId: Long?, count: Int): QuizSoloLoadResult {
+        // Let a failure here propagate so the screen shows the error state instead of "no questions".
+        val savedResponses = api.savedQuestions()
+        val lists = runCatching { api.questionLists() }.getOrNull().orEmpty()
+        val source = lists.firstOrNull { it.id == sourceId }
+        val sourceIds = source?.questionIds?.toSet()
+        val selectedResponses = if (sourceIds == null) {
+            savedResponses
+        } else {
+            savedResponses.filter { it.id in sourceIds }
         }
-        return source
+        val questions = selectedResponses
+            .mapNotNull { it.toQuizQuestionOrNull() }
             .shuffled()
             .take(count)
             .map { it.withShuffledOptions() }
+        val sources = buildList {
+            add(QuizQuestionSource(null, "Todas as perguntas", savedResponses.size))
+            lists.forEach { list ->
+                add(QuizQuestionSource(list.id, list.name, list.questionCount.toInt()))
+            }
+        }
+        return QuizSoloLoadResult(
+            sources = sources,
+            selectedSourceId = source?.id,
+            selectedSourceName = source?.name ?: "Todas as perguntas",
+            totalSavedQuestions = savedResponses.size,
+            questions = questions
+        )
     }
 
     private fun SavedQuestionResponse.toQuizQuestionOrNull(): QuizQuestion? {
@@ -137,14 +173,27 @@ private class QuizSoloViewModel(
     var state by mutableStateOf(QuizSoloUiState())
         private set
 
-    suspend fun startQuiz() {
-        state = QuizSoloUiState(phase = QuizSoloPhase.LOADING)
-        runCatching { repository.loadRoundQuestions(ROUND_SIZE) }
-            .onSuccess { questions ->
-                state = if (questions.isEmpty()) {
-                    QuizSoloUiState(phase = QuizSoloPhase.EMPTY)
+    suspend fun startQuiz(sourceId: Long? = state.selectedSourceId) {
+        state = state.copy(phase = QuizSoloPhase.LOADING, selectedSourceId = sourceId)
+        runCatching { repository.loadRoundQuestions(sourceId, ROUND_SIZE) }
+            .onSuccess { result ->
+                state = if (result.totalSavedQuestions == 0) {
+                    QuizSoloUiState(
+                        phase = QuizSoloPhase.EMPTY,
+                        sources = result.sources,
+                        selectedSourceId = result.selectedSourceId,
+                        selectedSourceName = result.selectedSourceName,
+                        totalSavedQuestions = result.totalSavedQuestions
+                    )
                 } else {
-                    QuizSoloUiState(phase = QuizSoloPhase.READY, questions = questions)
+                    QuizSoloUiState(
+                        phase = QuizSoloPhase.READY,
+                        sources = result.sources,
+                        selectedSourceId = result.selectedSourceId,
+                        selectedSourceName = result.selectedSourceName,
+                        totalSavedQuestions = result.totalSavedQuestions,
+                        questions = result.questions
+                    )
                 }
             }
             .onFailure {
@@ -155,20 +204,21 @@ private class QuizSoloViewModel(
             }
     }
 
+    suspend fun chooseSource(sourceId: Long?) {
+        startQuiz(sourceId)
+    }
+
     fun beginRound() {
-        if (state.questions.isEmpty()) {
-            state = state.copy(phase = QuizSoloPhase.EMPTY)
-        } else {
-            state = state.copy(
-                phase = QuizSoloPhase.QUESTION,
-                currentIndex = 0,
-                selectedAnswerIndex = null,
-                correctAnswers = 0,
-                wrongAnswers = 0,
-                earnedCoins = 0,
-                roundId = System.currentTimeMillis()
-            )
-        }
+        if (state.questions.isEmpty()) return
+        state = state.copy(
+            phase = QuizSoloPhase.QUESTION,
+            currentIndex = 0,
+            selectedAnswerIndex = null,
+            correctAnswers = 0,
+            wrongAnswers = 0,
+            earnedCoins = 0,
+            roundId = System.currentTimeMillis()
+        )
     }
 
     fun selectAnswer(index: Int) {
@@ -201,7 +251,7 @@ private class QuizSoloViewModel(
     }
 
     suspend fun restartQuiz() {
-        startQuiz()
+        startQuiz(state.selectedSourceId)
     }
 
     private fun QuizSoloUiState.toHistory(userId: Long) = QuizSoloRoundHistory(
@@ -252,7 +302,6 @@ fun QuizSoloScreen(
                 onCoinsBalanceUpdated(newBalance)
                 rewardMessage = "Pontos adicionados ao seu saldo."
             }.onFailure {
-                // TODO: criar fila offline de recompensas se o backend estiver indisponível.
                 rewardMessage = "Pontos calculados. Sincronize quando estiver online."
             }
         }
@@ -270,7 +319,8 @@ fun QuizSoloScreen(
                 onRetry = { scope.launch { viewModel.restartQuiz() } }
             )
             QuizSoloPhase.READY -> QuizSoloStart(
-                questions = state.questions,
+                state = state,
+                onSelectSource = { sourceId -> scope.launch { viewModel.chooseSource(sourceId) } },
                 onStart = { viewModel.beginRound() }
             )
             QuizSoloPhase.QUESTION -> QuizSoloQuestion(
@@ -296,7 +346,7 @@ fun QuizSoloScreen(
 @Composable
 private fun QuizSoloLoading() {
     Text("Quiz Solo", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
-    Text("Carregando perguntas...", color = LearnerMutedText)
+    Text("Carregando perguntas do banco...", color = LearnerMutedText)
     LinearProgressIndicator(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(99.dp)),
         color = LearnerPrimary,
@@ -308,8 +358,8 @@ private fun QuizSoloLoading() {
 private fun QuizSoloEmpty(onRetry: () -> Unit) {
     Text("Quiz Solo", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
     EmptyStateCard(
-        title = "Não há perguntas disponíveis no momento.",
-        subtitle = "Gere ou salve perguntas no banco de perguntas e tente novamente."
+        title = "Nenhuma pergunta salva ainda.",
+        subtitle = "Gere perguntas, salve no Banco de Perguntas e depois volte aqui para jogar."
     )
     Button(onClick = onRetry, modifier = Modifier.fillMaxWidth()) { Text("Tentar novamente") }
 }
@@ -321,10 +371,32 @@ private fun QuizSoloError(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
-private fun QuizSoloStart(questions: List<QuizQuestion>, onStart: () -> Unit) {
-    val estimatedReward = QuizSoloRewardRules.calculate(questions.size, questions.size)
+private fun QuizSoloStart(
+    state: QuizSoloUiState,
+    onSelectSource: (Long?) -> Unit,
+    onStart: () -> Unit
+) {
+    val estimatedReward = QuizSoloRewardRules.calculate(state.questions.size, state.questions.size)
     Text("Quiz Solo", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
-    Text("Responda perguntas e ganhe pontos por acertos.", color = LearnerMutedText)
+    Text("Escolha uma lista do Banco de Perguntas para montar a rodada.", color = LearnerMutedText)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(26.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Fonte das perguntas", fontWeight = FontWeight.Black, fontSize = 18.sp)
+            state.sources.forEach { source ->
+                QuizSourceCard(
+                    source = source,
+                    selected = source.id == state.selectedSourceId,
+                    onClick = { onSelectSource(source.id) }
+                )
+            }
+        }
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
@@ -339,18 +411,41 @@ private fun QuizSoloStart(questions: List<QuizQuestion>, onStart: () -> Unit) {
                     Text("QS", color = LearnerPrimary, fontWeight = FontWeight.Black)
                 }
                 Column {
-                    Text("${questions.size} perguntas por rodada", fontWeight = FontWeight.Black, fontSize = 18.sp)
-                    Text("Sem limite de tempo por enquanto", color = LearnerMutedText)
+                    Text(state.selectedSourceName, fontWeight = FontWeight.Black, fontSize = 18.sp)
+                    Text("${state.questions.size} perguntas nesta rodada", color = LearnerMutedText)
                 }
             }
-            Text("Recompensa máxima: $estimatedReward pontos", color = LearnerTeal, fontWeight = FontWeight.Black)
-            Text(
-                "TODO: futuramente permitir escolher quantidade, categoria, dificuldade e modo com tempo.",
-                color = LearnerMutedText,
-                fontSize = 12.sp
-            )
-            Button(onClick = onStart, modifier = Modifier.fillMaxWidth()) { Text("Começar") }
+            if (state.questions.isEmpty()) {
+                Text("Essa lista ainda não tem perguntas. Adicione perguntas no Banco ou escolha outra lista.", color = LearnerCoral, fontWeight = FontWeight.Bold)
+            } else {
+                Text("Recompensa máxima: $estimatedReward pontos", color = LearnerTeal, fontWeight = FontWeight.Black)
+                Text("A rodada usa perguntas salvas no Banco de Perguntas.", color = LearnerMutedText, fontSize = 12.sp)
+            }
+            Button(onClick = onStart, enabled = state.questions.isNotEmpty(), modifier = Modifier.fillMaxWidth()) { Text("Começar") }
         }
+    }
+}
+
+@Composable
+private fun QuizSourceCard(source: QuizQuestionSource, selected: Boolean, onClick: () -> Unit) {
+    val background = if (selected) LearnerPrimary else LearnerPrimaryTint
+    val titleColor = if (selected) Color.White else Color(0xFF111827)
+    val subtitleColor = if (selected) Color.White.copy(alpha = .82f) else LearnerMutedText
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(18.dp))
+            .background(background)
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(source.name, color = titleColor, fontWeight = FontWeight.Black)
+            Text("${source.questionCount} perguntas", color = subtitleColor, fontSize = 12.sp)
+        }
+        Text(if (selected) "Selecionada" else "Usar", color = titleColor, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     }
 }
 
@@ -366,6 +461,7 @@ private fun QuizSoloQuestion(
     val progress = (state.currentIndex + if (answered) 1 else 0).toFloat() / state.questions.size.toFloat()
 
     Text("Quiz Solo", fontFamily = CircularDisplayFamily, fontSize = 30.sp, fontWeight = FontWeight.Black)
+    Text(state.selectedSourceName, color = LearnerMutedText, fontWeight = FontWeight.Bold)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         QuizSoloMetric("${state.currentIndex + 1}/${state.questions.size}", "pergunta", Modifier.weight(1f))
         QuizSoloMetric("${state.correctAnswers}", "acertos", Modifier.weight(1f))
@@ -496,16 +592,3 @@ private fun QuizSoloRoundHistory.toJson() = JSONObject()
     .put("wrongAnswers", wrongAnswers)
     .put("earnedCoins", earnedCoins)
     .put("completedAt", completedAt)
-
-private fun mockQuestions(): List<QuizQuestion> = listOf(
-    QuizQuestion(1, "Qual estrutura armazena pares de chave e valor?", listOf("Lista", "Mapa", "Fila", "Pilha"), 1, QuestionCategory.PROGRAMMING),
-    QuizQuestion(2, "Quanto é 12 x 8?", listOf("88", "96", "108", "128"), 1, QuestionCategory.MATH),
-    QuizQuestion(3, "Qual planeta é conhecido como planeta vermelho?", listOf("Vênus", "Marte", "Júpiter", "Saturno"), 1, QuestionCategory.SCIENCE),
-    QuizQuestion(4, "Em banco de dados, SQL é usado principalmente para quê?", listOf("Editar imagens", "Consultar dados", "Compilar apps", "Criar ícones"), 1, QuestionCategory.DATABASE),
-    QuizQuestion(5, "Qual evento marcou o início da Idade Moderna segundo a divisão tradicional?", listOf("Queda de Constantinopla", "Revolução Francesa", "Primeira Guerra", "Guerra Fria"), 0, QuestionCategory.HISTORY),
-    QuizQuestion(6, "Em Kotlin, qual palavra cria uma variável imutável?", listOf("var", "val", "let", "fun"), 1, QuestionCategory.PROGRAMMING),
-    QuizQuestion(7, "Qual é a raiz quadrada de 81?", listOf("7", "8", "9", "10"), 2, QuestionCategory.MATH),
-    QuizQuestion(8, "Qual gás as plantas absorvem no processo de fotossíntese?", listOf("Oxigênio", "Nitrogênio", "Gás carbônico", "Hélio"), 2, QuestionCategory.SCIENCE),
-    QuizQuestion(9, "O que significa CRUD?", listOf("Criar, ler, atualizar e deletar", "Copiar, rodar, usar e depurar", "Classe, rota, usuário e dado", "Cache, request, upload e download"), 0, QuestionCategory.DATABASE),
-    QuizQuestion(10, "Qual alternativa representa uma função em Kotlin?", listOf("def soma()", "function soma()", "fun soma()", "fn soma()"), 2, QuestionCategory.PROGRAMMING)
-)

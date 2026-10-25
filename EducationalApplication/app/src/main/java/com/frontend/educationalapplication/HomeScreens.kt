@@ -406,7 +406,7 @@ fun HomeScreen(
                     },
                     initialSection = reportInitialSection
                 )
-                2 -> CalendarScreen(calendar)
+                2 -> CalendarScreen(calendar, reviews)
                 3 -> ProgressDashboard(progress, goals, onOpenRanking = { homeRoute = HomeRoute.Ranking })
                 4 -> GoalsMissionsDashboard(api, user.userId, sessions, goals, missions, onClaimed = {
                     onUserUpdated(user.copy(coins = user.coins + it))
@@ -972,7 +972,7 @@ fun PriorityActionCards(
         .maxByOrNull { it.progressPercent }
 
     StudyProgressCard(
-        title = priorityReview?.let { it.topic.orEmpty().ifBlank { it.subject.ifBlank { it.title } } } ?: "Pr?xima revis?o",
+        title = priorityReview?.let { it.topic.orEmpty().ifBlank { it.subject.ifBlank { it.title } } } ?: "Próxima revisão",
         action = "Revisar",
         progress = priorityReview?.dueDate?.takeIf { it.isNotBlank() } ?: "${reviews.count { !it.completed }} pend.",
         accent = Color(0xFF6A63FF),
@@ -1589,5 +1589,10 @@ fun HelpGlyph(color: Color) {
     }
 }
 
-fun String.firstName(): String = trim().split(" ").firstOrNull().orEmpty().ifBlank { "estudante" }
+fun String.firstName(): String {
+    val clean = trim()
+    if (clean.isBlank() || clean.equals("null", ignoreCase = true)) return "estudante"
+    val first = clean.split(" ").firstOrNull().orEmpty()
+    return if (first.equals("null", ignoreCase = true)) "estudante" else first
+}
 

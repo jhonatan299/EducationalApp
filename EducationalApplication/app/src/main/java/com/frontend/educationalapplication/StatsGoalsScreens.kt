@@ -481,7 +481,7 @@ fun WeeklyStudyChart(days: List<Pair<String, Int>>, isPreview: Boolean = false) 
             }
             if (isPreview) {
                 Text(
-                    "A amostra e substitu?da assim que voc? registrar uma sessão.",
+                    "A amostra é substituída assim que você registrar uma sessão.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

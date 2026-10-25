@@ -76,17 +76,21 @@ import java.util.Calendar
 import java.util.Locale
 import kotlin.time.Duration.Companion.seconds
 @Composable
-fun CalendarScreen(calendar: List<CalendarDayResponse>) {
+fun CalendarScreen(calendar: List<CalendarDayResponse>, reviews: List<ReviewReminderResponse> = emptyList()) {
     val totalMinutes = calendar.sumOf { it.totalMinutes }
     val studiedDays = calendar.size
     val calendarByDate = calendar.associateBy { it.date }
+    val pendingReviewsByDate = reviews.filter { !it.completed }.groupBy { it.dueDate }
+    val activityDays = (calendar.map { it.date } + pendingReviewsByDate.keys).distinct().size
     var selectedMode by remember { mutableIntStateOf(0) }
-    var selectedDate by remember(calendar) { mutableStateOf(calendar.firstOrNull()?.date ?: todayIsoDate()) }
+    var selectedDate by remember(calendar, reviews) {
+        mutableStateOf(calendar.firstOrNull()?.date ?: pendingReviewsByDate.keys.sorted().firstOrNull() ?: todayIsoDate())
+    }
     var dateInput by remember { mutableStateOf(selectedDate) }
 
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         CalendarTopBar(
-            subtitle = "$studiedDays dias com estudo • $totalMinutes min"
+            subtitle = "$activityDays dias com atividade • $totalMinutes min • ${reviews.count { !it.completed }} revisões"
         )
 
         OutlinedTextField(
@@ -120,6 +124,7 @@ fun CalendarScreen(calendar: List<CalendarDayResponse>) {
                 MonthCalendarView(
                     selectedDate = selectedDate,
                     calendarByDate = calendarByDate,
+                    reviewsByDate = pendingReviewsByDate,
                     onDateSelected = {
                         selectedDate = it
                         dateInput = it
@@ -129,16 +134,20 @@ fun CalendarScreen(calendar: List<CalendarDayResponse>) {
                         dateInput = selectedDate
                     }
                 )
-                SelectedDayStudyCard(calendarByDate[selectedDate])
+                SelectedDayStudyCard(calendarByDate[selectedDate], pendingReviewsByDate[selectedDate].orEmpty())
             }
             1 -> {
                 WeekCalendarView(
                     selectedDate = selectedDate,
                     calendarByDate = calendarByDate,
-                    onDateSelected = { selectedDate = it }
+                    reviewsByDate = pendingReviewsByDate,
+                    onDateSelected = {
+                        selectedDate = it
+                        dateInput = it
+                    }
                 )
             }
-            else -> AgendaCalendarView(calendar)
+            else -> AgendaCalendarView(calendar, pendingReviewsByDate)
         }
     }
 }
@@ -232,6 +241,7 @@ fun CalendarModeSelector(selectedMode: Int, onModeSelected: (Int) -> Unit) {
 fun MonthCalendarView(
     selectedDate: String,
     calendarByDate: Map<String, CalendarDayResponse>,
+    reviewsByDate: Map<String, List<ReviewReminderResponse>>,
     onDateSelected: (String) -> Unit,
     onMonthChange: (Int) -> Unit
 ) {
@@ -286,6 +296,7 @@ fun MonthCalendarView(
                         day = day,
                         selected = day.date == selectedDate,
                         studyDay = calendarByDate[day.date],
+                        reviewCount = reviewsByDate[day.date].orEmpty().size,
                         onClick = { onDateSelected(day.date) },
                         modifier = Modifier.weight(1f)
                     )
@@ -303,12 +314,14 @@ fun MonthDayCell(
     day: CalendarDayCell,
     selected: Boolean,
     studyDay: CalendarDayResponse?,
+    reviewCount: Int = 0,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val background = when {
         selected -> LearnerPrimary
         studyDay != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.75f)
+        reviewCount > 0 -> LearnerYellow.copy(alpha = 0.22f)
         else -> Color.Transparent
     }
     val textColor = when {
@@ -336,15 +349,15 @@ fun MonthDayCell(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold
             )
-            if (studyDay != null) {
+            if (studyDay != null || reviewCount > 0) {
                 Box(
                     modifier = Modifier
                         .size(6.dp)
                         .clip(CircleShape)
-                        .background(if (selected) Color.White else LearnerTeal)
+                        .background(if (selected) Color.White else if (studyDay != null) LearnerTeal else LearnerYellow)
                 )
                 Text(
-                    text = "${studyDay.totalMinutes}m",
+                    text = studyDay?.let { "${it.totalMinutes}m" } ?: "${reviewCount} rev",
                     color = if (selected) Color.White else LearnerPrimary,
                     style = MaterialTheme.typography.labelSmall,
                     textAlign = TextAlign.Center
@@ -355,22 +368,24 @@ fun MonthDayCell(
 }
 
 @Composable
-fun SelectedDayStudyCard(day: CalendarDayResponse?) {
-    if (day == null) {
+fun SelectedDayStudyCard(day: CalendarDayResponse?, reviews: List<ReviewReminderResponse>) {
+    if (day == null && reviews.isEmpty()) {
         EmptyStateCard(
-            title = "Sem estudo neste dia",
-            subtitle = "Salve uma sessão para ela aparecer no calendário."
+            title = "Sem atividade neste dia",
+            subtitle = "Salve uma sessão ou programe uma revisão para ela aparecer no calendário."
         )
         return
     }
 
-    CalendarDayCard(day)
+    day?.let { CalendarDayCard(it) }
+    reviews.forEach { CalendarReviewEventCard(it) }
 }
 
 @Composable
 fun WeekCalendarView(
     selectedDate: String,
     calendarByDate: Map<String, CalendarDayResponse>,
+    reviewsByDate: Map<String, List<ReviewReminderResponse>>,
     onDateSelected: (String) -> Unit
 ) {
     val weekDates = remember(selectedDate) { buildWeekDates(selectedDate) }
@@ -383,6 +398,7 @@ fun WeekCalendarView(
             weekDates.forEach { date ->
                 val selected = date == selectedDate
                 val studyDay = calendarByDate[date]
+                val reviewCount = reviewsByDate[date].orEmpty().size
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -407,12 +423,12 @@ fun WeekCalendarView(
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold
                         )
-                        if (studyDay != null) {
+                        if (studyDay != null || reviewCount > 0) {
                             Box(
                                 modifier = Modifier
                                     .size(6.dp)
                                     .clip(CircleShape)
-                                    .background(if (selected) Color.White else LearnerTeal)
+                                    .background(if (selected) Color.White else if (studyDay != null) LearnerTeal else LearnerYellow)
                             )
                         }
                     }
@@ -422,37 +438,85 @@ fun WeekCalendarView(
     }
 
     val weekStudyDays = weekDates.mapNotNull { calendarByDate[it] }
-    if (weekStudyDays.isEmpty()) {
+    val weekReviews = weekDates.flatMap { reviewsByDate[it].orEmpty() }
+    if (weekStudyDays.isEmpty() && weekReviews.isEmpty()) {
         EmptyStateCard(
             title = "Semana livre",
-            subtitle = "Nenhuma sessão registrada nessa semana."
+            subtitle = "Nenhuma sessão ou revisão registrada nessa semana."
         )
     } else {
         weekStudyDays.forEach { day ->
             CalendarStudyEventCard(day)
         }
+        weekReviews.forEach { review ->
+            CalendarReviewEventCard(review)
+        }
     }
 }
 
 @Composable
-fun AgendaCalendarView(calendar: List<CalendarDayResponse>) {
+fun AgendaCalendarView(calendar: List<CalendarDayResponse>, reviewsByDate: Map<String, List<ReviewReminderResponse>>) {
     val nextDays = calendar.sortedBy { it.date }
+    val nextReviews = reviewsByDate.values.flatten().sortedBy { it.dueDate }
 
-    if (nextDays.isEmpty()) {
+    if (nextDays.isEmpty() && nextReviews.isEmpty()) {
         EmptyStateCard(
             title = "Sem eventos próximos",
-            subtitle = "Suas sessões aparecerão aqui quando forem criadas."
+            subtitle = "Suas sessões e revisões aparecerão aqui quando forem criadas."
         )
         return
     }
 
     SectionHeader(
         title = "Agenda",
-        subtitle = "${nextDays.size} dias com atividade"
+        subtitle = "${nextDays.size + nextReviews.size} eventos"
     )
 
     nextDays.forEach { day ->
         CalendarStudyEventCard(day)
+    }
+    nextReviews.forEach { review ->
+        CalendarReviewEventCard(review)
+    }
+}
+
+@Composable
+fun CalendarReviewEventCard(review: ReviewReminderResponse) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = LearnerYellow.copy(alpha = 0.16f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(7.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Revisão", color = LearnerYellow, fontWeight = FontWeight.Black)
+                Text(review.dueDate, color = LearnerMutedText, fontSize = 12.sp)
+            }
+            Text(
+                text = review.title,
+                fontWeight = FontWeight.Black,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            val details = listOfNotNull(
+                review.subject.takeIf { it.isNotBlank() },
+                review.topic?.takeIf { it.isNotBlank() },
+                review.taskTitle?.takeIf { it.isNotBlank() }
+            ).joinToString(" • ")
+            if (details.isNotBlank()) {
+                Text(details, color = LearnerMutedText, fontSize = 13.sp)
+            }
+            review.notes?.takeIf { it.isNotBlank() }?.let {
+                Text(it, color = LearnerMutedText, fontSize = 12.sp)
+            }
+        }
     }
 }
 
